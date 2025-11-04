@@ -1,0 +1,30 @@
+package client.ui.student.interfaces;
+
+import model.*;
+
+public interface StudentDashboardCallbacks {
+    // Navigation callbacks
+    void onLogoutRequested();
+    void onTabChanged(int tabIndex);
+    
+    // Exam management callbacks
+    void onRefreshExamsRequested();
+    void onJoinExamRequested(ExamRoom examRoom);
+    void onStartExamRequested(ExamSession session);
+    void onSubmitExamRequested(ExamSession session, boolean isAutoSubmit);
+    void onExamTimeExpired(ExamSession session);
+    
+    // Answer management callbacks
+    void onAnswerChanged(int questionId, String answer);
+    void onAnswerSaved(int questionId, String answer);
+    void onNavigateToQuestion(int questionIndex);
+    
+    // Results callbacks
+    void onViewResultsRequested();
+    void onRefreshResultsRequested();
+    void onResultDetailRequested(ExamResult result);
+    
+    // Status updates
+    void updateStatus(String message);
+    void updateStatus(String message, boolean isError);
+}
