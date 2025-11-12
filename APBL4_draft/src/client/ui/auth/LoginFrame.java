@@ -46,7 +46,6 @@ public class LoginFrame extends JFrame implements
         setTitle("Online Exam System - Login");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setResizable(false);
-        setLocationRelativeTo(null);
         
         // Create panels
         headerPanel = new HeaderPanel();
@@ -69,7 +68,34 @@ public class LoginFrame extends JFrame implements
         mainPanel.add(statusPanel, BorderLayout.SOUTH);
         
         add(mainPanel);
+        
+        // ✅ THAY ĐỔI 1: Pack trước để xác định kích thước cửa sổ
         pack();
+        
+        // ✅ THAY ĐỔI 2: Đặt cửa sổ vào chính giữa màn hình SAU KHI đã pack()
+        setLocationRelativeTo(null);
+        
+        // ✅ THAY ĐỔI 3 (TÙY CHỌN): Có thể set vị trí chính xác theo tọa độ màn hình
+        // centerOnScreen(); // Bỏ comment dòng này nếu muốn dùng cách tính toán chính xác hơn
+    }
+    
+    /**
+     * ✅ PHƯƠNG THỨC MỚI: Đặt cửa sổ chính giữa màn hình một cách chính xác
+     * Phương thức này tính toán vị trí dựa trên kích thước màn hình và kích thước cửa sổ
+     */
+    private void centerOnScreen() {
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension frameSize = getSize();
+        
+        // Tính toán vị trí x, y để cửa sổ nằm chính giữa
+        int x = (screenSize.width - frameSize.width) / 2;
+        int y = (screenSize.height - frameSize.height) / 2;
+        
+        setLocation(x, y);
+        
+        System.out.println("🖥️ Screen size: " + screenSize.width + "x" + screenSize.height);
+        System.out.println("📐 Frame size: " + frameSize.width + "x" + frameSize.height);
+        System.out.println("📍 Frame position: (" + x + ", " + y + ")");
     }
     
     private void setupEventHandlers() {
