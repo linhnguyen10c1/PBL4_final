@@ -11,11 +11,13 @@ import client.ui.admin.dialogs.AddUserDialog;
 import client.ui.admin.dialogs.EditUserDialog;
 import client.ui.admin.interfaces.AdminDashboardCallbacks;
 import client.ui.admin.panels.*;
+import client.ui.auth.LoginFrame; // ✅ THÊM IMPORT
 import model.User;
 
 import javax.swing.*;
 import java.awt.*;
 import client.controller.ExamRoomController;
+
 public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
     
     private NetworkManager networkManager;
@@ -23,6 +25,10 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
     private UserController userController;
     private ExamRoomController examRoomController;
     private QuestionController questionController;
+    
+    // ✅ THÊM: Reference đến LoginFrame
+    private LoginFrame loginFrame;
+    
     // UI Panels
     private AdminHeaderPanel headerPanel;
     private JTabbedPane mainTabbedPane;
@@ -33,25 +39,33 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
     private ExamRoomManagementPanel examRoomManagementPanel;
     private QuestionManagementPanel questionManagementPanel;
     
+    // ✅ CONSTRUCTOR CŨ (giữ nguyên để tương thích)
     public AdminDashboard(NetworkManager networkManager, LoginController loginController) {
+        this(networkManager, loginController, null);
+    }
+    
+    // ✅ CONSTRUCTOR MỚI (với LoginFrame reference)
+    public AdminDashboard(NetworkManager networkManager, LoginController loginController, LoginFrame loginFrame) {
         this.networkManager = networkManager;
         this.loginController = loginController;
+        this.loginFrame = loginFrame; // ✅ Lưu reference
         this.userController = new UserController(networkManager);
         this.examRoomController = new ExamRoomController(networkManager);
         this.questionController = new QuestionController(networkManager);
-        // Set session for user controller
+        
+        // Set session for controllers
         userController.setCurrentUser(
             loginController.getCurrentUser(), 
             loginController.getSessionToken()
         );
         examRoomController.setCurrentUser( 
-                loginController.getCurrentUser(), 
-                loginController.getSessionToken()
-            );
+            loginController.getCurrentUser(), 
+            loginController.getSessionToken()
+        );
         questionController.setCurrentUser(
-        		loginController.getCurrentUser(),
-        		loginController.getSessionToken()
-        	);
+            loginController.getCurrentUser(),
+            loginController.getSessionToken()
+        );
         
         initializeUI();
         setupEventHandlers();
@@ -63,7 +77,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
         
         setTitle("Administrator Dashboard - " + 
             (currentUser != null ? currentUser.getFullName() : "Admin"));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // ✅ CHANGED: Không exit ngay
         setSize(1200, 800);
         setLocationRelativeTo(null);
         
@@ -91,7 +105,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
         userManagementPanel = new UserManagementPanel(this);
         tabbedPane.addTab("User Management", userManagementPanel);
         
-        // Other tabs (placeholders for now)
+        // Other tabs
         questionManagementPanel = new QuestionManagementPanel(questionController);
         tabbedPane.addTab("Question Management", questionManagementPanel);
         examRoomManagementPanel = new ExamRoomManagementPanel(this, examRoomController);
@@ -108,21 +122,81 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             onTabChanged(selectedIndex);
         });
         
-        // Window closing
+        // ✅ THAY ĐỔI: Window closing handler
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
-                onLogoutRequested();
+                handleWindowClosing(); // ✅ Gọi method mới
             }
         });
     }
     
-//    private void loadInitialData() {
-//        // Load initial data for active tab
-//        updateStatus("Loading data...");
-//        // TODO: Load users, questions, etc.
-//        updateStatus("Ready");
-//    }
+    // ✅ PHƯƠNG THỨC MỚI: Xử lý đóng cửa sổ
+    private void handleWindowClosing() {
+        int option = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to logout and return to login screen?",
+            "Exit Confirmation",
+            JOptionPane.YES_NO_OPTION);
+        
+        if (option == JOptionPane.YES_OPTION) {
+            performLogout();
+        }
+    }
+    
+    // ✅ PHƯƠNG THỨC MỚI: Thực hiện logout
+    private void performLogout() {
+        System.out.println("🔄 AdminDashboard: Performing logout...");
+        
+        // Logout từ server
+        loginController.logout();
+        
+        // Clear local data
+        clearDashboardData();
+        
+        // Dispose dashboard
+        dispose();
+        
+        // ✅ Hiển thị lại LoginFrame nếu có
+        if (loginFrame != null) {
+            loginFrame.showAfterLogout();
+        } else {
+            System.err.println("⚠️ LoginFrame reference is null - cannot return to login screen");
+            System.exit(0); // Fallback: thoát ứng dụng
+        }
+    }
+    
+    // ✅ PHƯƠNG THỨC MỚI: Clear data của dashboard
+    private void clearDashboardData() {
+        System.out.println("🔄 Clearing AdminDashboard data...");
+        
+        try {
+            // Clear user list
+            if (userManagementPanel != null) {
+                userManagementPanel.setUsers(new ArrayList<>());
+            }
+            
+            // Clear controllers
+            if (userController != null) {
+                userController.clearSession();
+            }
+            if (examRoomController != null) {
+                examRoomController.clearSession();
+            }
+            if (questionController != null) {
+                questionController.clearSession();
+            }
+            
+            System.out.println("✅ AdminDashboard data cleared");
+        } catch (Exception e) {
+            System.err.println("⚠️ Error clearing dashboard data: " + e.getMessage());
+        }
+    }
+    
+    private void loadInitialData() {
+        updateStatus("Loading data...");
+        refreshUserList();
+        updateStatus("Ready - Click 'Refresh' to load users");
+    }
     
     // AdminDashboardCallbacks implementation
     @Override
@@ -133,10 +207,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             JOptionPane.YES_NO_OPTION);
         
         if (option == JOptionPane.YES_OPTION) {
-            loginController.logout();
-            dispose();
-            // Show login frame again
-            // TODO: Navigate back to login
+            performLogout(); // ✅ THAY ĐỔI: Gọi performLogout() thay vì dispose()
         }
     }
     
@@ -148,12 +219,6 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
         }
     }
     
-//    @Override
-//    public void onAddUserRequested() {
-//        updateStatus("Opening Add User dialog...");
-//        // TODO: Show AddUserDialog
-//    	
-//    }
     @Override
     public void onAddUserRequested() {
         AddUserDialog dialog = new AddUserDialog(this);
@@ -167,11 +232,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             }
         }
     }
-//    @Override
-//    public void onEditUserRequested(User user) {
-//        updateStatus("Opening Edit User dialog for: " + user.getUsername());
-//        // TODO: Show EditUserDialog
-//    }
+    
     @Override
     public void onEditUserRequested(User user) {
         EditUserDialog dialog = new EditUserDialog(this, user);
@@ -185,8 +246,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             }
         }
     }
- // client/ui/admin/AdminDashboard.java
- // client/ui/admin/AdminDashboard.java - Cải thiện refreshUserList
+    
     private void refreshUserList() {
         try {
             updateStatus("Loading users...");
@@ -216,6 +276,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             userManagementPanel.setUsers(new ArrayList<>());
         }
     }
+    
     @Override
     public void onDeleteUserRequested(User user) {
         int option = JOptionPane.showConfirmDialog(this,
@@ -226,7 +287,6 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
         
         if (option == JOptionPane.YES_OPTION) {
             updateStatus("Deleting user: " + user.getUsername());
-            // TODO: Implement user deletion
             boolean success = userController.deleteUser(user.getUserId(), user.getUsername());
             if (success) {
                 refreshUserList();
@@ -234,61 +294,34 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             }
         }
     }
- // client/ui/admin/AdminDashboard.java - Thêm các phương thức thiếu
-
- // Thêm vào constructor
- private void loadInitialData() {
-     // Load initial data for active tab
-     updateStatus("Loading data...");
-     refreshUserList(); // ✅ Load users ngay khi khởi động
-     updateStatus("Ready - Click 'Refresh' to load users");
- }
-
-
- @Override
- public void onRefreshUsersRequested() {
-     // ✅ Implement refresh functionality
-     refreshUserList();
- }
-
- @Override
- public void onSearchUsersRequested(String searchTerm) {
-     try {
-         updateStatus("Searching for: " + searchTerm);
-         
-         List<User> users;
-         if (searchTerm.isEmpty()) {
-             users = userController.getAllUsers();
-             updateStatus("Showing all users");
-         } else {
-             users = userController.searchUsers(searchTerm);
-             updateStatus("Found " + (users != null ? users.size() : 0) + " users");
-         }
-         
-         if (users != null) {
-             userManagementPanel.setUsers(users);
-         }
-     } catch (Exception e) {
-         System.err.println("❌ Error in search: " + e.getMessage());
-         updateStatus("Search error: " + e.getMessage());
-     }
- }
-//    
-//    @Override
-//    public void onRefreshUsersRequested() {
-//        updateStatus("Refreshing users list...");
-//        // TODO: Reload users from server
-//    }
-//    
-//    @Override
-//    public void onSearchUsersRequested(String searchTerm) {
-//        if (searchTerm.isEmpty()) {
-//            updateStatus("Showing all users");
-//        } else {
-//            updateStatus("Searching for: " + searchTerm);
-//        }
-//        // TODO: Implement search functionality
-//    }
+    
+    @Override
+    public void onRefreshUsersRequested() {
+        refreshUserList();
+    }
+    
+    @Override
+    public void onSearchUsersRequested(String searchTerm) {
+        try {
+            updateStatus("Searching for: " + searchTerm);
+            
+            List<User> users;
+            if (searchTerm.isEmpty()) {
+                users = userController.getAllUsers();
+                updateStatus("Showing all users");
+            } else {
+                users = userController.searchUsers(searchTerm);
+                updateStatus("Found " + (users != null ? users.size() : 0) + " users");
+            }
+            
+            if (users != null) {
+                userManagementPanel.setUsers(users);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error in search: " + e.getMessage());
+            updateStatus("Search error: " + e.getMessage());
+        }
+    }
     
     @Override
     public void onAddQuestionRequested() {
