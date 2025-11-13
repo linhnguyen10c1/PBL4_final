@@ -27,6 +27,9 @@ public class LoginFrame extends JFrame implements
     private LoginPanel loginPanel;
     private StatusPanel statusPanel;
     
+    // ✅ THÊM: Lưu reference dashboard hiện tại
+    private JFrame currentDashboard;
+    
     public LoginFrame(NetworkManager networkManager) {
         this.networkManager = networkManager;
         this.loginController = new LoginController(networkManager);
@@ -39,7 +42,7 @@ public class LoginFrame extends JFrame implements
         setupEventHandlers();
         
         // Initial state
-        updateConnectionStatus(false);
+        updateConnectionStatus(networkManager.isConnected());
     }
     
     private void initializeUI() {
@@ -69,25 +72,17 @@ public class LoginFrame extends JFrame implements
         
         add(mainPanel);
         
-        // ✅ THAY ĐỔI 1: Pack trước để xác định kích thước cửa sổ
         pack();
-        
-        // ✅ THAY ĐỔI 2: Đặt cửa sổ vào chính giữa màn hình SAU KHI đã pack()
         setLocationRelativeTo(null);
-        
-        // ✅ THAY ĐỔI 3 (TÙY CHỌN): Có thể set vị trí chính xác theo tọa độ màn hình
-        // centerOnScreen(); // Bỏ comment dòng này nếu muốn dùng cách tính toán chính xác hơn
     }
     
     /**
      * ✅ PHƯƠNG THỨC MỚI: Đặt cửa sổ chính giữa màn hình một cách chính xác
-     * Phương thức này tính toán vị trí dựa trên kích thước màn hình và kích thước cửa sổ
      */
     private void centerOnScreen() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         Dimension frameSize = getSize();
         
-        // Tính toán vị trí x, y để cửa sổ nằm chính giữa
         int x = (screenSize.width - frameSize.width) / 2;
         int y = (screenSize.height - frameSize.height) / 2;
         
@@ -105,6 +100,67 @@ public class LoginFrame extends JFrame implements
             public void windowClosing(java.awt.event.WindowEvent e) {
                 onExitRequested();
             }
+        });
+    }
+    
+    // ========================================
+    // ✅ PHƯƠNG THỨC MỚI: Reset LoginFrame về trạng thái ban đầu
+    // ========================================
+    /**
+     * Reset LoginFrame về trạng thái ban đầu khi logout
+     * - Clear password field
+     * - Reset status
+     * - Focus vào username
+     */
+    public void resetForLogout() {
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("🔄 Resetting LoginFrame for logout...");
+            
+            // Clear password
+            loginPanel.clearPassword();
+            
+            // Reset login state
+            loginPanel.setLoginInProgress(false);
+            
+            // Update status
+            if (networkManager.isConnected()) {
+                statusPanel.setStatus("Logged out successfully - Ready to login again");
+                loginPanel.setLoginEnabled(true);
+            } else {
+                statusPanel.setStatus("Logged out - Please reconnect to server");
+                loginPanel.setLoginEnabled(false);
+            }
+            
+            // Focus username field
+            loginPanel.focusUsername();
+            
+            // Đưa cửa sổ lên trên cùng
+            toFront();
+            requestFocus();
+            
+            System.out.println("✅ LoginFrame reset complete");
+        });
+    }
+    
+    /**
+     * ✅ PHƯƠNG THỨC MỚI: Hiển thị lại LoginFrame sau khi logout
+     */
+    public void showAfterLogout() {
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("🔄 Showing LoginFrame after logout...");
+            
+            // Reset UI
+            resetForLogout();
+            
+            // Hiển thị lại frame
+            setVisible(true);
+            
+            // Đưa lên trên cùng và focus
+            setState(JFrame.NORMAL);
+            toFront();
+            requestFocus();
+            
+            System.out.println("✅ LoginFrame is now visible");
         });
     }
     
@@ -235,20 +291,20 @@ public class LoginFrame extends JFrame implements
             
             System.out.println("✅ Login successful: " + user.getUsername() + " (Role: " + user.getRole() + ")");
             
-            // Hide login frame
+            // ✅ ẨN (không dispose) login frame
             setVisible(false);
             
             // Open appropriate dashboard based on user role
             if (user.isAdmin()) {
-                AdminDashboard adminDashboard = new AdminDashboard(networkManager, loginController);
-                adminDashboard.setVisible(true);
+                currentDashboard = new AdminDashboard(networkManager, loginController, this);
+                currentDashboard.setVisible(true);
             } else if (user.isStudent()) {
-                StudentDashboard studentDashboard = new StudentDashboard(networkManager, loginController);
-                studentDashboard.setVisible(true);
+                currentDashboard = new StudentDashboard(networkManager, loginController, this);
+                currentDashboard.setVisible(true);
             }
             
-            // Dispose login frame
-            dispose();
+            // ✅ KHÔNG dispose() login frame nữa - giữ lại để reuse
+            // dispose(); // <-- REMOVED
         });
     }
     
@@ -265,7 +321,19 @@ public class LoginFrame extends JFrame implements
     
     @Override
     public void onLogoutSuccess() {
-        // Not used in login frame
+        // ✅ PHƯƠNG THỨC MỚI: Được gọi từ dashboard khi logout
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("🔄 onLogoutSuccess called in LoginFrame");
+            
+            // Dispose current dashboard
+            if (currentDashboard != null) {
+                currentDashboard.dispose();
+                currentDashboard = null;
+            }
+            
+            // Show login frame again
+            showAfterLogout();
+        });
     }
     
     // NetworkManager.ConnectionListener implementation
@@ -299,5 +367,14 @@ public class LoginFrame extends JFrame implements
             statusPanel.setStatus("Connection lost");
             showError("Connection to server was lost");
         });
+    }
+    
+    // ✅ GETTER: Cho phép dashboard access LoginFrame
+    public LoginController getLoginController() {
+        return loginController;
+    }
+    
+    public NetworkManager getNetworkManager() {
+        return networkManager;
     }
 }
