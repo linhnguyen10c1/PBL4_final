@@ -37,6 +37,10 @@ public class ExamInterfacePanel extends JPanel {
     private int currentQuestionIndex = 0;
     private Timer autoSaveTimer;
     
+    // ✅ FIX #2: Debounce variables
+    private volatile long lastAnswerChangeTime = 0;
+    private static final long ANSWER_CHANGE_DEBOUNCE_MS = 300;  // 300ms debounce
+    
     public ExamInterfacePanel(StudentDashboardCallbacks callbacks, StudentExamController examController) {
         this.callbacks = callbacks;
         this.examController = examController;
@@ -64,7 +68,6 @@ public class ExamInterfacePanel extends JPanel {
         
         // Navigation panel (right)
         navigationPanel = new ExamNavigationPanel();
-//        navigationPanel.setNavigationListener(this::navigateToQuestion);
         navigationPanel.setNavigationListener(new ExamNavigationPanel.NavigationListener() {
             @Override
             public void onQuestionClicked(int questionIndex) {
@@ -161,19 +164,6 @@ public class ExamInterfacePanel extends JPanel {
         updateStatus("Exam started. Good luck!");
     }
     
-//    public void setExamQuestions(List<ExamAnswer> questions) {
-//        this.examQuestions = questions;
-//        navigationPanel.setQuestions(questions);
-//        
-//        if (!questions.isEmpty()) {
-//            currentQuestionIndex = 0;
-//            displayCurrentQuestion();
-//        }
-//        
-//        updateNavigationButtons();
-//    }
-    
-    
     public void navigateToQuestion(int questionIndex) {
         if (questionIndex >= 0 && questionIndex < examQuestions.size()) {
             // Save current answer before navigating
@@ -188,6 +178,7 @@ public class ExamInterfacePanel extends JPanel {
             }
         }
     }
+    
     public void setExamQuestions(List<ExamAnswer> questions) {
         System.out.println("🔍 ExamInterfacePanel.setExamQuestions called with " + questions.size() + " questions");
         
@@ -208,15 +199,7 @@ public class ExamInterfacePanel extends JPanel {
         
         updateNavigationButtons();
     }
-//    private void displayCurrentQuestion() {
-//        if (currentQuestionIndex >= 0 && currentQuestionIndex < examQuestions.size()) {
-//            ExamAnswer examAnswer = examQuestions.get(currentQuestionIndex);
-//            questionPanel.setQuestion(examAnswer.getQuestion(), examAnswer.getStudentAnswer());
-//            navigationPanel.setCurrentQuestion(currentQuestionIndex);
-//            
-//            updateStatus("Question " + (currentQuestionIndex + 1) + " of " + examQuestions.size());
-//        }
-//    }
+    
     private void displayCurrentQuestion() {
         if (currentQuestionIndex >= 0 && currentQuestionIndex < examQuestions.size()) {
             ExamAnswer examAnswer = examQuestions.get(currentQuestionIndex);
@@ -238,6 +221,7 @@ public class ExamInterfacePanel extends JPanel {
                               " (total: " + examQuestions.size() + ")");
         }
     }
+    
     private void navigateToPrevious() {
         if (currentQuestionIndex > 0) {
             navigateToQuestion(currentQuestionIndex - 1);
@@ -255,13 +239,34 @@ public class ExamInterfacePanel extends JPanel {
         navigateToNext();
     }
     
+    /**
+     * ✅ FIX #2: Answer changed with debounce and duplicate check
+     */
     private void onAnswerChanged(String answer) {
         if (currentQuestionIndex >= 0 && currentQuestionIndex < examQuestions.size()) {
+            // ✅ FIX #2: DEBOUNCE - Kiểm tra thời gian
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastAnswerChangeTime < ANSWER_CHANGE_DEBOUNCE_MS) {
+                System.out.println("⏭️ [Debounce] Skipping duplicate answer change (too fast)");
+                return;
+            }
+            lastAnswerChangeTime = currentTime;
+            
             ExamAnswer examAnswer = examQuestions.get(currentQuestionIndex);
+            
+            // ✅ FIX #2: CHỈ GỬI NẾU CÂU TRẢ LỜI THAY ĐỔI
+            String oldAnswer = examAnswer.getStudentAnswer();
+            if (java.util.Objects.equals(oldAnswer, answer)) {
+                System.out.println("⏭️ [Skip] Answer unchanged: " + answer);
+                return;
+            }
+            
+            System.out.println("💾 [Save] Answer changed: " + oldAnswer + " → " + answer);
             examAnswer.setStudentAnswer(answer);
             
             // Mark as answered in navigation
-            navigationPanel.markQuestionAnswered(currentQuestionIndex, answer != null && !answer.trim().isEmpty());
+            navigationPanel.markQuestionAnswered(currentQuestionIndex, 
+                answer != null && !answer.trim().isEmpty());
             
             if (callbacks != null) {
                 callbacks.onAnswerChanged(examAnswer.getQuestionId(), answer);
