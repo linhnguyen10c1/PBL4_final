@@ -4,7 +4,7 @@ import client.controller.StudentExamController;
 import client.controller.LoginController;
 import client.ui.student.interfaces.StudentDashboardCallbacks;
 import client.ui.student.panels.*;
-import client.ui.auth.LoginFrame; // ✅ THÊM IMPORT
+import client.ui.auth.LoginFrame;
 import client.network.NetworkManager;
 import model.*;
 
@@ -21,7 +21,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     private LoginController loginController;
     private StudentExamController examController;
     
-    // ✅ THÊM: Reference đến LoginFrame
     private LoginFrame loginFrame;
     
     // UI Components
@@ -38,16 +37,14 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     // Current state
     private ExamSession currentExamSession;
     
-    // ✅ CONSTRUCTOR CŨ (giữ nguyên để tương thích)
     public StudentDashboard(NetworkManager networkManager, LoginController loginController) {
         this(networkManager, loginController, null);
     }
     
-    // ✅ CONSTRUCTOR MỚI (với LoginFrame reference)
     public StudentDashboard(NetworkManager networkManager, LoginController loginController, LoginFrame loginFrame) {
         this.networkManager = networkManager;
         this.loginController = loginController;
-        this.loginFrame = loginFrame; // ✅ Lưu reference
+        this.loginFrame = loginFrame;
         this.examController = new StudentExamController(networkManager);
         this.examController.setExamListener(this);
         
@@ -65,7 +62,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     private void initializeUI() {
         User currentUser = loginController.getCurrentUser();
         setTitle("Student Dashboard - " + (currentUser != null ? currentUser.getFullName() : "Student"));
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // ✅ CHANGED
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLocationRelativeTo(null);
         
@@ -112,7 +109,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     private void setupEventHandlers() {
-        // ✅ THAY ĐỔI: Window closing handler
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
@@ -141,11 +137,9 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             if (choice == JOptionPane.YES_OPTION) {
                 // Auto-submit exam
                 onSubmitExamRequested(currentExamSession, true);
-                // Sau khi submit xong sẽ logout
                 performLogout();
             }
         } else {
-            // Không có exam đang diễn ra
             int choice = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to logout and return to login screen?",
                 "Exit Confirmation",
@@ -157,39 +151,26 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         }
     }
     
-    // ✅ PHƯƠNG THỨC MỚI: Thực hiện logout
     private void performLogout() {
         System.out.println("🔄 StudentDashboard: Performing logout...");
         
-        // Logout từ server
         loginController.logout();
-        
-        // Clear local data
         clearDashboardData();
-        
-        // Dispose dashboard
         dispose();
         
-        // ✅ Hiển thị lại LoginFrame
         if (loginFrame != null) {
             loginFrame.showAfterLogout();
         } else {
             System.err.println("⚠️ LoginFrame reference is null");
-            System.exit(0); // Fallback
+            System.exit(0);
         }
     }
     
-    // ✅ PHƯƠNG THỨC MỚI: Clear data của dashboard (CÁCH 1 - Không có clearData())
     private void clearDashboardData() {
         System.out.println("🔄 Clearing StudentDashboard data...");
         
         try {
-            // Clear current exam session
             currentExamSession = null;
-            
-            // Note: Panels sẽ tự reset khi login lại
-            // Không cần gọi clearData() vì không có method đó
-            
             System.out.println("✅ StudentDashboard data cleared");
         } catch (Exception e) {
             System.err.println("⚠️ Error clearing dashboard data: " + e.getMessage());
@@ -214,7 +195,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             JOptionPane.YES_NO_OPTION);
             
         if (choice == JOptionPane.YES_OPTION) {
-            performLogout(); // ✅ THAY ĐỔI
+            performLogout();
         }
     }
     
@@ -278,10 +259,30 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         onSubmitExamRequested(session, true);
     }
     
+    /**
+     * ✅ FIX #3: Async answer save to prevent UI blocking
+     */
     @Override
     public void onAnswerChanged(int questionId, String answer) {
         if (currentExamSession != null) {
-            examController.saveAnswer(currentExamSession.getSessionToken(), questionId, answer);
+            // ✅ FIX #3: ASYNC - Chạy trên background thread để không block UI
+            final String sessionToken = currentExamSession.getSessionToken();
+            
+            new Thread(() -> {
+                try {
+                    System.out.println("📤 [AsyncSave] Saving answer Q" + questionId + " = " + answer);
+                    boolean success = examController.saveAnswer(sessionToken, questionId, answer);
+                    
+                    if (success) {
+                        System.out.println("✅ [AsyncSave] Answer saved successfully");
+                    } else {
+                        System.err.println("⚠️ [AsyncSave] Failed to save answer");
+                    }
+                } catch (Exception e) {
+                    System.err.println("❌ [AsyncSave] Error saving answer: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }, "AnswerSaveThread-Q" + questionId).start();
         }
     }
     

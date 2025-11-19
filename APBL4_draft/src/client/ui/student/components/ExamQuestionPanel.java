@@ -134,137 +134,82 @@ public class ExamQuestionPanel extends JPanel {
         optionD.addActionListener(answerListener);
     }
     
-//    public void setQuestion(Question question, String existingAnswer) {
-//        this.currentQuestion = question;
-//        
-//        if (question != null) {
-//            // Update question info
-//            questionNumberLabel.setText("Question #" + question.getQuestionId());
-//            
-//            // Update difficulty with styling
-//            String difficulty = question.getDifficulty();
-//            difficultyLabel.setText("Difficulty: " + difficulty);
-//            switch (difficulty) {
-//                case "EASY":
-//                    difficultyLabel.setForeground(new Color(0, 150, 0));
-//                    difficultyLabel.setText("Difficulty: 🟢 Easy");
-//                    break;
-//                case "MEDIUM":
-//                    difficultyLabel.setForeground(new Color(255, 140, 0));
-//                    difficultyLabel.setText("Difficulty: 🟡 Medium");
-//                    break;
-//                case "HARD":
-//                    difficultyLabel.setForeground(Color.RED);
-//                    difficultyLabel.setText("Difficulty: 🔴 Hard");
-//                    break;
-//                default:
-//                    difficultyLabel.setForeground(Color.BLACK);
-//                    break;
-//            }
-//            
-//            // Update question text
-//            questionTextArea.setText(question.getQuestionText());
-//            
-//            // Update options
-//            optionA.setText("A. " + question.getOptionA());
-//            optionB.setText("B. " + question.getOptionB());
-//            optionC.setText("C. " + question.getOptionC());
-//            optionD.setText("D. " + question.getOptionD());
-//            
-//            // Set existing answer
-//            setSelectedAnswer(existingAnswer);
-//        } else {
-//            clearQuestion();
-//        }
-//    }
-//    
-//    private void setSelectedAnswer(String answer) {
-//        optionGroup.clearSelection();
-//        currentAnswer = answer;
-//        
-//        if (answer != null) {
-//            switch (answer.toUpperCase()) {
-//                case "A":
-//                    optionA.setSelected(true);
-//                    break;
-//                case "B":
-//                    optionB.setSelected(true);
-//                    break;
-//                case "C":
-//                    optionC.setSelected(true);
-//                    break;
-//                case "D":
-//                    optionD.setSelected(true);
-//                    break;
-//            }
-//        }
-//    }
+    /**
+     * ✅ FIX #1: Set question with listener disabled temporarily
+     */
     public void setQuestion(Question question, String existingAnswer) {
-        // ✅ THÊM DEBUG LOG
         System.out.println("🔍 [ExamQuestionPanel] setQuestion called:");
         System.out.println("  - Question: " + (question != null ? question.getQuestionText() : "NULL"));
-        System.out.println("  - OptionA: " + (question != null ? question.getOptionA() : "NULL"));
-        System.out.println("  - OptionB: " + (question != null ? question.getOptionB() : "NULL"));
         System.out.println("  - Existing answer: " + existingAnswer);
         
         this.currentQuestion = question;
         
         if (question != null) {
-            // ✅ ENSURE UI UPDATE ON EDT
             SwingUtilities.invokeLater(() -> {
-                // Update question info
-                questionNumberLabel.setText("Question #" + question.getQuestionId());
-                System.out.println("✅ [ExamQuestionPanel] Question number set: " + question.getQuestionId());
+                // ✅ FIX #1: TẮT LISTENER TẠM THỜI để tránh trigger khi set answer
+                AnswerChangeListener tempListener = this.answerChangeListener;
+                this.answerChangeListener = null;
                 
-                // Update difficulty with styling
-                String difficulty = question.getDifficulty();
-                difficultyLabel.setText("Difficulty: " + difficulty);
-                switch (difficulty) {
-                    case "EASY":
-                        difficultyLabel.setForeground(new Color(0, 150, 0));
-                        difficultyLabel.setText("Difficulty: 🟢 Easy");
-                        break;
-                    case "MEDIUM":
-                        difficultyLabel.setForeground(new Color(255, 140, 0));
-                        difficultyLabel.setText("Difficulty: 🟡 Medium");
-                        break;
-                    case "HARD":
-                        difficultyLabel.setForeground(Color.RED);
-                        difficultyLabel.setText("Difficulty: 🔴 Hard");
-                        break;
-                    default:
-                        difficultyLabel.setForeground(Color.BLACK);
-                        break;
+                try {
+                    // Update question info
+                    questionNumberLabel.setText("Question #" + question.getQuestionId());
+                    System.out.println("✅ [ExamQuestionPanel] Question number set: " + question.getQuestionId());
+                    
+                    // Update difficulty with styling
+                    String difficulty = question.getDifficulty();
+                    difficultyLabel.setText("Difficulty: " + difficulty);
+                    switch (difficulty) {
+                        case "EASY":
+                            difficultyLabel.setForeground(new Color(0, 150, 0));
+                            difficultyLabel.setText("Difficulty: 🟢 Easy");
+                            break;
+                        case "MEDIUM":
+                            difficultyLabel.setForeground(new Color(255, 140, 0));
+                            difficultyLabel.setText("Difficulty: 🟡 Medium");
+                            break;
+                        case "HARD":
+                            difficultyLabel.setForeground(Color.RED);
+                            difficultyLabel.setText("Difficulty: 🔴 Hard");
+                            break;
+                        default:
+                            difficultyLabel.setForeground(Color.BLACK);
+                            break;
+                    }
+                    
+                    // Update question text
+                    if (questionTextArea != null) {
+                        questionTextArea.setText(question.getQuestionText());
+                        System.out.println("✅ [ExamQuestionPanel] Question text set");
+                    } else {
+                        System.err.println("❌ [ExamQuestionPanel] questionTextArea is null!");
+                    }
+                    
+                    // Update options
+                    if (optionA != null) {
+                        optionA.setText("A. " + question.getOptionA());
+                        System.out.println("✅ [ExamQuestionPanel] Options set");
+                    } else {
+                        System.err.println("❌ [ExamQuestionPanel] optionA is null!");
+                    }
+                    
+                    if (optionB != null) optionB.setText("B. " + question.getOptionB());
+                    if (optionC != null) optionC.setText("C. " + question.getOptionC());
+                    if (optionD != null) optionD.setText("D. " + question.getOptionD());
+                    
+                    // ✅ Set existing answer (KHÔNG trigger callback vì listener = null)
+                    setSelectedAnswer(existingAnswer);
+                    
+                    // Force UI refresh
+                    this.revalidate();
+                    this.repaint();
+                    
+                    System.out.println("✅ [ExamQuestionPanel] Question displayed successfully");
+                    
+                } finally {
+                    // ✅ FIX #1: BẬT LẠI LISTENER
+                    this.answerChangeListener = tempListener;
+                    System.out.println("✅ [ExamQuestionPanel] Listener re-enabled");
                 }
-                
-                // Update question text
-                if (questionTextArea != null) {
-                    questionTextArea.setText(question.getQuestionText());
-                    System.out.println("✅ [ExamQuestionPanel] Question text set: " + question.getQuestionText());
-                } else {
-                    System.err.println("❌ [ExamQuestionPanel] questionTextArea is null!");
-                }
-                
-                // Update options
-                if (optionA != null) {
-                    optionA.setText("A. " + question.getOptionA());
-                    System.out.println("✅ [ExamQuestionPanel] Option A set: " + question.getOptionA());
-                } else {
-                    System.err.println("❌ [ExamQuestionPanel] optionA is null!");
-                }
-                
-                if (optionB != null) optionB.setText("B. " + question.getOptionB());
-                if (optionC != null) optionC.setText("C. " + question.getOptionC());
-                if (optionD != null) optionD.setText("D. " + question.getOptionD());
-                
-                // Set existing answer
-                setSelectedAnswer(existingAnswer);
-                
-                // ✅ FORCE UI REFRESH
-                this.revalidate();
-                this.repaint();
-                
-                System.out.println("✅ [ExamQuestionPanel] Question fully displayed and UI refreshed");
             });
         } else {
             System.err.println("❌ [ExamQuestionPanel] Question is null!");
@@ -272,7 +217,6 @@ public class ExamQuestionPanel extends JPanel {
         }
     }
 
-    // ✅ THÊM DEBUG cho setSelectedAnswer  
     private void setSelectedAnswer(String answer) {
         System.out.println("🔍 [ExamQuestionPanel] setSelectedAnswer: " + answer);
         
