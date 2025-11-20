@@ -48,7 +48,7 @@ public class ManageStudentsDialog extends JDialog {
         
         initializeUI();
         setupEventHandlers();
-        loadStudentData();
+        loadFreshStudentData();
         
         setSize(800, 600);
         setLocationRelativeTo(parent);
@@ -68,6 +68,49 @@ public class ManageStudentsDialog extends JDialog {
         // Button panel
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
+    }
+    private void loadFreshStudentData() {
+        try {
+            System.out.println("🔍 [ManageStudentsDialog] Loading fresh student data for room: " + examRoom.getRoomId());
+            
+            // ✅ FIX 1: Get fresh ExamRoom data from server
+            List<ExamRoom> allRooms = examRoomController.getAllExamRooms();
+            if (allRooms != null) {
+                ExamRoom freshRoom = allRooms.stream()
+                    .filter(room -> room.getRoomId() == examRoom.getRoomId())
+                    .findFirst()
+                    .orElse(examRoom);
+                
+                // Update with fresh data
+                this.examRoom = freshRoom;
+                System.out.println("✅ [ManageStudentsDialog] Fresh room data loaded. Assigned students: " + 
+                                 freshRoom.getAllowedStudentIds().size());
+            }
+            
+            // ✅ FIX 2: Load currently assigned students from fresh data
+            currentAssignedStudents.clear();
+            for (Integer studentId : examRoom.getAllowedStudentIds()) {
+                User student = findStudentById(studentId);
+                if (student != null) {
+                    currentAssignedStudents.add(student);
+                    System.out.println("✅ [ManageStudentsDialog] Loaded assigned student: " + student.getUsername());
+                } else {
+                    System.err.println("❌ [ManageStudentsDialog] Student ID " + studentId + " not found in allStudents list");
+                }
+            }
+            
+            System.out.println("✅ [ManageStudentsDialog] Total assigned students loaded: " + currentAssignedStudents.size());
+            
+            // ✅ FIX 3: Update UI
+            updateTables();
+            
+        } catch (Exception e) {
+            System.err.println("❌ [ManageStudentsDialog] Error loading fresh student data: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Fallback to original method
+            loadStudentData();
+        }
     }
     
     private JPanel createHeaderPanel() {
@@ -252,18 +295,24 @@ public class ManageStudentsDialog extends JDialog {
     }
     
     private void loadStudentData() {
+        System.out.println("🔍 [ManageStudentsDialog] Loading student data (fallback method)");
+        System.out.println("  - ExamRoom allowed students: " + examRoom.getAllowedStudentIds());
+        
         // Load currently assigned students
         currentAssignedStudents.clear();
         for (Integer studentId : examRoom.getAllowedStudentIds()) {
             User student = findStudentById(studentId);
             if (student != null) {
                 currentAssignedStudents.add(student);
+                System.out.println("  - Added assigned student: " + student.getUsername());
+            } else {
+                System.err.println("  - Student ID " + studentId + " not found");
             }
         }
         
+        System.out.println("✅ [ManageStudentsDialog] Loaded " + currentAssignedStudents.size() + " assigned students");
         updateTables();
     }
-    
     private void updateTables() {
         // Update assigned students table
         assignedTableModel.setRowCount(0);
@@ -280,8 +329,9 @@ public class ManageStudentsDialog extends JDialog {
         availableTableModel.setRowCount(0);
         String searchTerm = searchField.getText().toLowerCase().trim();
         
+        int availableCount = 0;
         for (User student : allStudents) {
-            // Skip if already assigned
+            // ✅ Skip if already assigned
             if (isStudentAssigned(student.getUserId())) {
                 continue;
             }
@@ -296,7 +346,10 @@ public class ManageStudentsDialog extends JDialog {
             
             Object[] row = {student.getUserId(), student.getUsername(), student.getFullName()};
             availableTableModel.addRow(row);
+            availableCount++;
         }
+        
+        System.out.println("✅ [ManageStudentsDialog] Available table updated: " + availableCount + " rows");
     }
     
     private void addSelectedStudents() {
@@ -355,6 +408,7 @@ public class ManageStudentsDialog extends JDialog {
         boolean success = examRoomController.addStudentsToRoom(examRoom.getRoomId(), studentIds);
         
         if (success) {
+        	 examRoom.setAllowedStudentIds(studentIds);
             dispose();
         }
     }
