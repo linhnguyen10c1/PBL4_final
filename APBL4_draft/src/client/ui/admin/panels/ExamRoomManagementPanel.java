@@ -226,6 +226,7 @@ public class ExamRoomManagementPanel extends JPanel implements ExamRoomControlle
         ExamRoom selectedRoom = examRoomsTable.getSelectedExamRoom();
         if (selectedRoom == null) return;
         
+        List<User> students = examRoomController.getAllStudents();
         ManageStudentsDialog dialog = new ManageStudentsDialog(
             (JFrame) SwingUtilities.getWindowAncestor(this),
             selectedRoom,
