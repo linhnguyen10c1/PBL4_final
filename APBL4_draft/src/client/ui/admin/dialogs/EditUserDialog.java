@@ -1,131 +1,103 @@
-// client/ui/admin/dialogs/EditUserDialog.java
 package client.ui.admin.dialogs;
 
 import model.User;
-import utils.ValidationUtil;
-
 import javax.swing.*;
 import java.awt.*;
 
 public class EditUserDialog extends JDialog {
-    private User originalUser;
-    private User resultUser;
-    private boolean confirmed = false;
     
-    private JTextField usernameField;
+    private boolean confirmed = false;
+    private User originalUser;
     private JTextField fullNameField;
-    private JComboBox<String> roleComboBox;
-    private JCheckBox activeCheckBox;
+    private JPasswordField passwordField;
+    private JComboBox<String> roleBox;
+    private JCheckBox reactivateCheckBox;
     
     public EditUserDialog(JFrame parent, User user) {
         super(parent, "Edit User", true);
         this.originalUser = user;
-        initializeUI();
-        populateFields();
-        setupEventHandlers();
+        initUI();
+        loadData();
         pack();
         setLocationRelativeTo(parent);
     }
     
-    private void initializeUI() {
+    private void initUI() {
         setLayout(new BorderLayout());
         
-        // Form panel
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        // ✅ THAY ĐỔI: Tăng rows từ 5 lên 6 để có chỗ cho checkbox
+        int rows = originalUser.isActive() ? 5 : 6; // 6 rows nếu inactive
+        JPanel form = new JPanel(new GridLayout(rows, 2, 10, 10));
+        form.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
-        // Username (read-only)
-        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(new JLabel("Username:"), gbc);
-        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        usernameField = new JTextField(20);
-        usernameField.setEditable(false);
-        usernameField.setBackground(Color.LIGHT_GRAY);
-        formPanel.add(usernameField, gbc);
+        form.add(new JLabel("Username:"));
+        JTextField usernameField = new JTextField(originalUser.getUsername());
+        usernameField.setEnabled(false);
+        form.add(usernameField);
         
-        // Full Name
-        gbc.gridx = 0; gbc.gridy = 1; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        formPanel.add(new JLabel("Full Name:"), gbc);
-        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        fullNameField = new JTextField(20);
-        formPanel.add(fullNameField, gbc);
+        form.add(new JLabel("Full Name:"));
+        fullNameField = new JTextField();
+        form.add(fullNameField);
         
-        // Role
-        gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        formPanel.add(new JLabel("Role:"), gbc);
-        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        roleComboBox = new JComboBox<>(new String[]{"STUDENT", "ADMIN"});
-        formPanel.add(roleComboBox, gbc);
+        form.add(new JLabel("New Password:"));
+        passwordField = new JPasswordField();
+        form.add(passwordField);
         
-        // Active
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
-        activeCheckBox = new JCheckBox("Active");
-        formPanel.add(activeCheckBox, gbc);
+        form.add(new JLabel("Role:"));
+        roleBox = new JComboBox<>(new String[]{"STUDENT", "ADMIN"});
+        form.add(roleBox);
         
-        // Buttons panel
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        JButton saveButton = new JButton("Save");
-        JButton cancelButton = new JButton("Cancel");
-        
-        saveButton.addActionListener(e -> handleSave());
-        cancelButton.addActionListener(e -> handleCancel());
-        
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-        
-        add(formPanel, BorderLayout.CENTER);
-        add(buttonPanel, BorderLayout.SOUTH);
-    }
-    
-    private void populateFields() {
-        if (originalUser != null) {
-            usernameField.setText(originalUser.getUsername());
-            fullNameField.setText(originalUser.getFullName());
-            roleComboBox.setSelectedItem(originalUser.getRole());
-            activeCheckBox.setSelected(originalUser.isActive());
-        }
-    }
-    
-    private void setupEventHandlers() {
-        // Enter key to save
-        getRootPane().setDefaultButton((JButton) ((JPanel) getContentPane()
-            .getComponent(1)).getComponent(0));
-    }
-    
-    private void handleSave() {
-        // Validate input
-        String fullName = fullNameField.getText().trim();
-        String role = (String) roleComboBox.getSelectedItem();
-        boolean active = activeCheckBox.isSelected();
-        
-        if (!ValidationUtil.isNotEmpty(fullName)) {
-            JOptionPane.showMessageDialog(this, "Full name is required");
-            return;
+        // ✅ THÊM: Checkbox reactivate chỉ hiện khi user inactive
+        if (!originalUser.isActive()) {
+            form.add(new JLabel("Status:"));
+            reactivateCheckBox = new JCheckBox("Reactivate User");
+            reactivateCheckBox.setForeground(Color.BLUE);
+            form.add(reactivateCheckBox);
         }
         
-        // Create updated user object
-        resultUser = new User();
-        resultUser.setUserId(originalUser.getUserId());
-        resultUser.setUsername(originalUser.getUsername()); // Keep original username
-        resultUser.setFullName(fullName);
-        resultUser.setRole(role);
-        resultUser.setActive(active);
+        JButton okBtn = new JButton("Save");
+        JButton cancelBtn = new JButton("Cancel");
         
-        confirmed = true;
-        dispose();
+        okBtn.addActionListener(e -> {
+            confirmed = true;
+            dispose();
+        });
+        cancelBtn.addActionListener(e -> dispose());
+        
+        JPanel buttons = new JPanel();
+        buttons.add(okBtn);
+        buttons.add(cancelBtn);
+        form.add(buttons);
+        
+        add(form);
     }
     
-    private void handleCancel() {
-        confirmed = false;
-        dispose();
+    private void loadData() {
+        fullNameField.setText(originalUser.getFullName());
+        roleBox.setSelectedItem(originalUser.getRole());
     }
     
-    public User getUpdatedUser() {
-        return resultUser;
-    }
+    public boolean isConfirmed() { return confirmed; }
     
-    public boolean isConfirmed() {
-        return confirmed;
+    public User getUser() {
+        User user = new User();
+        user.setUserId(originalUser.getUserId());
+        user.setUsername(originalUser.getUsername());
+        user.setFullName(fullNameField.getText().trim());
+        user.setRole((String) roleBox.getSelectedItem());
+        
+        // ✅ XỬ LÝ REACTIVATE
+        if (!originalUser.isActive() && reactivateCheckBox != null && reactivateCheckBox.isSelected()) {
+            user.setActive(true); // Reactivate
+        } else {
+            user.setActive(originalUser.isActive()); // Keep original status
+        }
+        
+        String password = new String(passwordField.getPassword());
+        if (!password.trim().isEmpty()) {
+            user.setPassword(password);
+        }
+        
+        return user;
     }
 }

@@ -13,24 +13,12 @@ import java.util.Map;
 import java.lang.reflect.Type;
 import com.google.gson.reflect.TypeToken;
 
-/**
- * User Controller - Handles user management operations (Admin only)
- * 
- * @author linhnguyen10c1
- * @since 2025-09-14 13:39:25 UTC
- */
 public class UserController extends BaseController {
     
     public UserController(NetworkManager networkManager) {
         super(networkManager);
     }
     
-    /**
-     * Get all users
-     */
- // client/controller/UserController.java
- // client/controller/UserController.java
- // client/controller/UserController.java
     public List<User> getAllUsers() {
         try {
             logAction("getAllUsers", "Fetching all users from server");
@@ -44,7 +32,7 @@ public class UserController extends BaseController {
             System.out.println("📤 Sending request: " + Protocol.GET_USERS);
             ResponseData response = sendRequest(Protocol.GET_USERS);
             
-            // ✅ Debug response
+          
             System.out.println("📥 Response success: " + response.isSuccess());
             System.out.println("📥 Response message: " + response.getMessage());
             System.out.println("📥 Response data: " + (response.getData() != null ? "Present (" + response.getData().length() + " chars)" : "null"));
@@ -218,9 +206,8 @@ public class UserController extends BaseController {
             
             // Confirm deletion
             boolean confirmed = showConfirmDialog("Confirm Deletion", 
-                "Are you sure you want to delete user '" + username + "'?\n" +
-                "This action cannot be undone.");
-            
+                "Are you sure you want to delete user '" + username + "'?");
+ 
             if (!confirmed) {
                 return false;
             }

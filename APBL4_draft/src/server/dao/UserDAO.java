@@ -128,6 +128,9 @@ public class UserDAO extends BaseDAO {
             throw new SQLException("No user found with ID: " + user.getUserId());
         }
         
+        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
+            updatePassword(user.getUserId(), user.getPassword());
+        }
         return getUserById(user.getUserId());
     }
     
