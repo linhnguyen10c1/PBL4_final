@@ -1,144 +1,143 @@
-// client/ui/admin/panels/UserManagementPanel.java
 package client.ui.admin.panels;
 
-import client.ui.admin.interfaces.AdminDashboardCallbacks;
-import client.ui.admin.components.UserManagementToolbar;
+import client.controller.UserController;
 import client.ui.admin.components.UsersTable;
+import client.ui.admin.dialogs.AddUserDialog;
+import client.ui.admin.dialogs.EditUserDialog;
 import model.User;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 
-public class UserManagementPanel extends JPanel implements UsersTable.UserSelectionListener {
+public class UserManagementPanel extends JPanel implements UsersTable.UserSelectionListener  {
     
-    private UserManagementToolbar toolbar;
+    private UserController userController;
     private UsersTable usersTable;
-    private AdminDashboardCallbacks callbacks;
+    private DefaultTableModel tableModel;
+    private JButton addBtn, editBtn, deleteBtn, refreshBtn;
+    private JTextField searchField;
     
-    public UserManagementPanel(AdminDashboardCallbacks callbacks) {
-        this.callbacks = callbacks;
-        initializeUI();
+    public UserManagementPanel(UserController userController) {
+        this.userController = userController;
+        initUI();
+        loadUsers();
     }
     
-    private void initializeUI() {
-        setLayout(new BorderLayout(10, 10));
+    private void initUI() {
+        setLayout(new BorderLayout(5, 10));
         
-        // Create components
-        toolbar = new UserManagementToolbar(new ToolbarCallbacksImpl());
+        // Top buttons
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        addBtn = new JButton("Add");
+        editBtn = new JButton("Edit");
+        deleteBtn = new JButton("Delete");
+        refreshBtn = new JButton("Refresh");
+        searchField = new JTextField(15);
+        JButton searchBtn = new JButton("Search");
+        
+        editBtn.setEnabled(false);
+        deleteBtn.setEnabled(false);
+        deleteBtn.setForeground(Color.RED);
+        
+        topPanel.add(addBtn);
+        topPanel.add(editBtn);
+        topPanel.add(deleteBtn);
+        topPanel.add(refreshBtn);
+        topPanel.add(Box.createHorizontalStrut(20));
+        topPanel.add(new JLabel("Search:"));
+        topPanel.add(searchField);
+        topPanel.add(searchBtn);
+        
+        add(topPanel, BorderLayout.NORTH);
+        
+        // Table
         usersTable = new UsersTable();
-        usersTable.setSelectionListener(this);
-        
-        // Layout
-        add(toolbar, BorderLayout.NORTH);
+        usersTable.setSelectionListener(this); 
         add(usersTable, BorderLayout.CENTER);
+        
+        addBtn.addActionListener(e -> addUser());
+        editBtn.addActionListener(e -> editUser());
+        deleteBtn.addActionListener(e -> deleteUser());
+        refreshBtn.addActionListener(e -> loadUsers());
+        searchBtn.addActionListener(e -> search());
+        searchField.addActionListener(e -> search());
     }
     
-    // UsersTable.UserSelectionListener implementation
     @Override
     public void onUserSelected(User user) {
-        toolbar.setUserSelected(true);
-        if (callbacks != null) {
-            callbacks.updateStatus("Selected user: " + user.getUsername());
-        }
+        editBtn.setEnabled(true);
+        deleteBtn.setEnabled(user.isActive());
     }
     
     @Override
     public void onUserDeselected() {
-        toolbar.setUserSelected(false);
-        if (callbacks != null) {
-            callbacks.updateStatus("No user selected");
-        }
+        editBtn.setEnabled(false);
+        deleteBtn.setEnabled(false);
     }
     
     @Override
     public void onUserDoubleClicked(User user) {
-        if (callbacks != null) {
-            callbacks.onEditUserRequested(user);
+        // Double click = edit user
+        editUser();
+    }
+    
+    private void addUser() {
+        AddUserDialog dialog = new AddUserDialog((JFrame) getTopLevelAncestor());
+        dialog.setVisible(true);
+        
+        if (dialog.isConfirmed()) {
+            if (userController.createUser(dialog.getUser())) {
+//                JOptionPane.showMessageDialog(this, "User created!");
+                loadUsers();
+            }
         }
     }
     
-    // Public methods for external control
-    public void setUsers(List<User> users) {
+    private void editUser() {
+    	 User selectedUser = usersTable.getSelectedUser();
+    	 if (selectedUser == null) return;
+        
+        EditUserDialog dialog = new EditUserDialog((JFrame) getTopLevelAncestor(), selectedUser);
+        dialog.setVisible(true);
+        
+        if (dialog.isConfirmed()) {
+            if (userController.updateUser(dialog.getUser())) {
+//                JOptionPane.showMessageDialog(this, "User updated!");
+                loadUsers();
+            }
+        }
+    }
+    
+    private void deleteUser() {
+    	User selectedUser = usersTable.getSelectedUser();
+    	if (selectedUser == null) return;
+        
+        
+        int choice = JOptionPane.showConfirmDialog(this,
+            "Delete user: " + selectedUser.getUsername() + "?",
+            "Confirm", JOptionPane.YES_NO_OPTION);
+        
+        if (choice == JOptionPane.YES_OPTION) {
+            if (userController.deleteUser(selectedUser.getUserId(), selectedUser.getUsername())) {
+//                JOptionPane.showMessageDialog(this, "User deleted!");
+                loadUsers();
+            }
+        }
+    }
+    
+    private void search() {
+        String keyword = searchField.getText().trim();
+        List<User> users = keyword.isEmpty() ? 
+            userController.getAllUsers() : 
+            userController.searchUsers(keyword);
         usersTable.setUsers(users);
     }
     
-    public User getSelectedUser() {
-        return usersTable.getSelectedUser();
+    private void loadUsers() {
+    	List<User> users = userController.getAllUsers();
+        usersTable.setUsers(users);
     }
     
-    public void refreshUsers() {
-        usersTable.refreshTable();
-    }
-    
-    public void clearSelection() {
-        usersTable.clearSelection();
-    }
-    
-    // Inner class to handle toolbar callbacks
-    private class ToolbarCallbacksImpl implements AdminDashboardCallbacks {
-        @Override
-        public void onLogoutRequested() {
-            if (callbacks != null) callbacks.onLogoutRequested();
-        }
-        
-        @Override
-        public void onTabChanged(int tabIndex) {
-            if (callbacks != null) callbacks.onTabChanged(tabIndex);
-        }
-        
-        @Override
-        public void onAddUserRequested() {
-            if (callbacks != null) callbacks.onAddUserRequested();
-        }
-        
-        @Override
-        public void onEditUserRequested(User user) {
-            User selectedUser = getSelectedUser();
-            if (selectedUser != null && callbacks != null) {
-                callbacks.onEditUserRequested(selectedUser);
-            }
-        }
-        
-        @Override
-        public void onDeleteUserRequested(User user) {
-            User selectedUser = getSelectedUser();
-            if (selectedUser != null && callbacks != null) {
-                callbacks.onDeleteUserRequested(selectedUser);
-            }
-        }
-        
-        @Override
-        public void onRefreshUsersRequested() {
-            if (callbacks != null) callbacks.onRefreshUsersRequested();
-        }
-        
-        @Override
-        public void onSearchUsersRequested(String searchTerm) {
-            if (callbacks != null) callbacks.onSearchUsersRequested(searchTerm);
-        }
-        
-        @Override
-        public void onAddQuestionRequested() {}
-        
-        @Override
-        public void onEditQuestionRequested(int questionId) {}
-        
-        @Override
-        public void onDeleteQuestionRequested(int questionId) {}
-        
-        @Override
-        public void onCreateRoomRequested() {}
-        
-        @Override
-        public void onEditRoomRequested(int roomId) {}
-        
-        @Override
-        public void onDeleteRoomRequested(int roomId) {}
-        
-        @Override
-        public void updateStatus(String message) {
-            if (callbacks != null) callbacks.updateStatus(message);
-        }
-    }
 }
