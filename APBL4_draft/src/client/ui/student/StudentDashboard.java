@@ -1,21 +1,28 @@
 package client.ui.student;
 
 import client.controller.StudentExamController;
-import client.controller.LoginController;
+import client. controller.LoginController;
 import client.ui.student.interfaces.StudentDashboardCallbacks;
 import client.ui.student.panels.*;
 import client.ui.auth.LoginFrame;
-import client.network.NetworkManager;
+import client. network.NetworkManager;
 import model.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
+import java. util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Student Dashboard
+ * 
+ * ✅ FIX:  Đã sửa các vấn đề sau:
+ * 1. Xóa onNavigateToQuestion() - gây vòng lặp vô hạn
+ * 2. Dùng ExecutorService thay vì new Thread() - hiệu quả hơn
+ * 3. Thêm shutdown cho executor khi logout
  */
-public class StudentDashboard extends JFrame implements StudentDashboardCallbacks, StudentExamController.ExamListener {
+public class StudentDashboard extends JFrame implements StudentDashboardCallbacks, StudentExamController. ExamListener {
     
     private NetworkManager networkManager;
     private LoginController loginController;
@@ -37,6 +44,10 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     // Current state
     private ExamSession currentExamSession;
     
+    // ✅ FIX: ExecutorService để xử lý save answer async
+    // Dùng single thread để đảm bảo các request được gửi tuần tự
+    private final ExecutorService answerSaveExecutor = Executors. newSingleThreadExecutor();
+    
     public StudentDashboard(NetworkManager networkManager, LoginController loginController) {
         this(networkManager, loginController, null);
     }
@@ -48,7 +59,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         this.examController = new StudentExamController(networkManager);
         this.examController.setExamListener(this);
         
-        User currentUser = loginController.getCurrentUser();
+        User currentUser = loginController. getCurrentUser();
         String sessionToken = loginController.getSessionToken();
         examController.setCurrentUser(currentUser, sessionToken);
         
@@ -61,7 +72,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     
     private void initializeUI() {
         User currentUser = loginController.getCurrentUser();
-        setTitle("Student Dashboard - " + (currentUser != null ? currentUser.getFullName() : "Student"));
+        setTitle("Student Dashboard - " + (currentUser != null ?  currentUser.getFullName() : "Student"));
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLocationRelativeTo(null);
@@ -79,7 +90,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         
         // Status bar
         statusPanel = new StudentStatusPanel();
-        add(statusPanel, BorderLayout.SOUTH);
+        add(statusPanel, BorderLayout. SOUTH);
     }
     
     private void createMainContent() {
@@ -88,7 +99,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         
         // Available Exams Tab
         availableExamsPanel = new AvailableExamsPanel(this, examController);
-        tabbedPane.addTab("📝 Available Exams", availableExamsPanel);
+        tabbedPane. addTab("📝 Available Exams", availableExamsPanel);
         
         // Exam Interface Tab (initially hidden)
         examInterfacePanel = new ExamInterfacePanel(this, examController);
@@ -98,8 +109,8 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         tabbedPane.addTab("📊 My Results", examResultsPanel);
         
         // Profile Tab
-        profilePanel = new StudentProfilePanel(this, loginController.getCurrentUser());
-        tabbedPane.addTab("👤 Profile", profilePanel);
+        profilePanel = new StudentProfilePanel(this, loginController. getCurrentUser());
+        tabbedPane. addTab("👤 Profile", profilePanel);
         
         // Tab change listener
         tabbedPane.addChangeListener(e -> {
@@ -110,9 +121,9 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     
     private void setupEventHandlers() {
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        addWindowListener(new java.awt.event.WindowAdapter() {
+        addWindowListener(new java.awt.event. WindowAdapter() {
             @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
+            public void windowClosing(java.awt. event.WindowEvent e) {
                 handleWindowClosing();
             }
         });
@@ -126,15 +137,15 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     private void handleWindowClosing() {
-        if (currentExamSession != null && currentExamSession.isInProgress()) {
-            int choice = JOptionPane.showConfirmDialog(this,
+        if (currentExamSession != null && currentExamSession. isInProgress()) {
+            int choice = JOptionPane. showConfirmDialog(this,
                 "You have an active exam in progress. Are you sure you want to exit?\n" +
                 "Your exam will be automatically submitted.",
                 "Exam in Progress",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
                 
-            if (choice == JOptionPane.YES_OPTION) {
+            if (choice == JOptionPane. YES_OPTION) {
                 // Auto-submit exam
                 onSubmitExamRequested(currentExamSession, true);
                 performLogout();
@@ -145,14 +156,17 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
                 "Exit Confirmation",
                 JOptionPane.YES_NO_OPTION);
                 
-            if (choice == JOptionPane.YES_OPTION) {
+            if (choice == JOptionPane. YES_OPTION) {
                 performLogout();
             }
         }
     }
     
     private void performLogout() {
-        System.out.println("🔄 StudentDashboard: Performing logout...");
+        System.out.println("🔄 StudentDashboard:  Performing logout...");
+        
+        // ✅ FIX: Shutdown executor khi logout
+        shutdownExecutor();
         
         loginController.logout();
         clearDashboardData();
@@ -166,18 +180,33 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         }
     }
     
+    /**
+     * ✅ FIX: Shutdown executor service gracefully
+     */
+    private void shutdownExecutor() {
+        try {
+            System.out.println("🔄 Shutting down answer save executor...");
+            answerSaveExecutor.shutdown();
+            // Không cần await vì các task đang chạy sẽ tự hoàn thành
+            System.out.println("✅ Executor shutdown initiated");
+        } catch (Exception e) {
+            System.err.println("⚠️ Error shutting down executor:  " + e.getMessage());
+        }
+    }
+    
     private void clearDashboardData() {
-        System.out.println("🔄 Clearing StudentDashboard data...");
+        System. out.println("🔄 Clearing StudentDashboard data.. .");
         
         try {
             currentExamSession = null;
             System.out.println("✅ StudentDashboard data cleared");
         } catch (Exception e) {
-            System.err.println("⚠️ Error clearing dashboard data: " + e.getMessage());
+            System.err. println("⚠️ Error clearing dashboard data: " + e.getMessage());
         }
     }
     
-    // StudentDashboardCallbacks implementation
+    // ==================== StudentDashboardCallbacks implementation ====================
+    
     @Override
     public void onLogoutRequested() {
         if (currentExamSession != null && currentExamSession.isInProgress()) {
@@ -194,7 +223,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             "Confirm Logout",
             JOptionPane.YES_NO_OPTION);
             
-        if (choice == JOptionPane.YES_OPTION) {
+        if (choice == JOptionPane. YES_OPTION) {
             performLogout();
         }
     }
@@ -212,7 +241,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             case 0: return "Join and take exams";
             case 1: return "View your exam history and results";
             case 2: return "Manage your profile settings";
-            default: return "";
+            default:  return "";
         }
     }
     
@@ -224,20 +253,20 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     
     @Override
     public void onJoinExamRequested(ExamRoom examRoom) {
-        updateStatus("Joining exam room: " + examRoom.getRoomName());
+        updateStatus("Joining exam room:  " + examRoom. getRoomName());
     }
     
     @Override
     public void onStartExamRequested(ExamSession session) {
         this.currentExamSession = session;
-        updateStatus("Starting exam: " + session.getExamRoom().getRoomName());
+        updateStatus("Starting exam:  " + session.getExamRoom().getRoomName());
         
         // Add exam interface tab and switch to it
         if (tabbedPane.indexOfComponent(examInterfacePanel) == -1) {
             tabbedPane.insertTab("🎯 Taking Exam", null, examInterfacePanel, "Currently taking exam", 1);
         }
         
-        examInterfacePanel.startExam(session);
+        examInterfacePanel. startExam(session);
         tabbedPane.setSelectedComponent(examInterfacePanel);
         
         // Disable other tabs during exam
@@ -247,7 +276,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     @Override
     public void onSubmitExamRequested(ExamSession session, boolean isAutoSubmit) {
         updateStatus("Submitting exam...");
-        examController.submitExam(session.getSessionToken(), isAutoSubmit);
+        examController.submitExam(session. getSessionToken(), isAutoSubmit);
     }
     
     @Override
@@ -255,23 +284,28 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         JOptionPane.showMessageDialog(this,
             "Time's up! Your exam has been automatically submitted.",
             "Exam Time Expired",
-            JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane. INFORMATION_MESSAGE);
         onSubmitExamRequested(session, true);
     }
     
     /**
-     * ✅ FIX #3: Async answer save to prevent UI blocking
+     * ✅ FIX: Async answer save using ExecutorService
+     * 
+     * Thay đổi: 
+     * - Dùng ExecutorService thay vì new Thread() mỗi lần
+     * - Single thread executor đảm bảo các request gửi tuần tự
+     * - Không block UI thread
      */
     @Override
     public void onAnswerChanged(int questionId, String answer) {
         if (currentExamSession != null) {
-            // ✅ FIX #3: ASYNC - Chạy trên background thread để không block UI
             final String sessionToken = currentExamSession.getSessionToken();
             
-            new Thread(() -> {
+            // ✅ FIX: Submit task vào executor thay vì tạo thread mới
+            answerSaveExecutor.submit(() -> {
                 try {
                     System.out.println("📤 [AsyncSave] Saving answer Q" + questionId + " = " + answer);
-                    boolean success = examController.saveAnswer(sessionToken, questionId, answer);
+                    boolean success = examController. saveAnswer(sessionToken, questionId, answer);
                     
                     if (success) {
                         System.out.println("✅ [AsyncSave] Answer saved successfully");
@@ -279,10 +313,10 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
                         System.err.println("⚠️ [AsyncSave] Failed to save answer");
                     }
                 } catch (Exception e) {
-                    System.err.println("❌ [AsyncSave] Error saving answer: " + e.getMessage());
+                    System.err.println("❌ [AsyncSave] Error saving answer: " + e. getMessage());
                     e.printStackTrace();
                 }
-            }, "AnswerSaveThread-Q" + questionId).start();
+            });
         }
     }
     
@@ -291,17 +325,13 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         updateStatus("Answer saved");
     }
     
-    @Override
-    public void onNavigateToQuestion(int questionIndex) {
-        if (examInterfacePanel != null) {
-            examInterfacePanel.navigateToQuestion(questionIndex);
-        }
-    }
+    // ✅ FIX: Đã xóa method onNavigateToQuestion() - method này gây vòng lặp vô hạn
+    // Không cần implement nữa vì đã xóa khỏi interface
     
     @Override
     public void onViewResultsRequested() {
         tabbedPane.setSelectedComponent(examResultsPanel);
-        examResultsPanel.loadResults();
+        examResultsPanel. loadResults();
     }
     
     @Override
@@ -313,7 +343,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     @Override
     public void onResultDetailRequested(ExamResult result) {
         client.ui.student.dialogs.ExamResultDialog dialog = 
-            new client.ui.student.dialogs.ExamResultDialog(this, result);
+            new client. ui.student.dialogs.ExamResultDialog(this, result);
         dialog.setVisible(true);
     }
     
@@ -325,11 +355,12 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     @Override
     public void updateStatus(String message, boolean isError) {
         if (statusPanel != null) {
-            statusPanel.setStatus(message, isError ? Color.RED : Color.BLACK);
+            statusPanel. setStatus(message, isError ?  Color.RED : Color. BLACK);
         }
     }
     
-    // StudentExamController.ExamListener implementation
+    // ==================== StudentExamController. ExamListener implementation ====================
+    
     @Override
     public void onAvailableRoomsLoaded(List<ExamRoom> rooms) {
         SwingUtilities.invokeLater(() -> {
@@ -355,7 +386,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             
             if (examInterfacePanel != null) {
                 examInterfacePanel.setExamQuestions(questions);
-                examInterfacePanel.revalidate();
+                examInterfacePanel. revalidate();
                 examInterfacePanel.repaint();
             }
         });
@@ -363,7 +394,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     
     @Override
     public void onExamSubmitted(ExamResult result) {
-        SwingUtilities.invokeLater(() -> {
+        SwingUtilities. invokeLater(() -> {
             this.currentExamSession = null;
             
             // Remove exam interface tab
@@ -376,7 +407,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             setTabsEnabled(true);
             
             // Show result
-            updateStatus("Exam submitted successfully. Score: " + String.format("%.1f%%", result.getPercentage()));
+            updateStatus("Exam submitted successfully.  Score: " + String.format("%.1f%%", result.getPercentage()));
             
             // Show result dialog
             onResultDetailRequested(result);
@@ -388,7 +419,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     
     @Override
     public void onExamResultsLoaded(List<ExamResult> results) {
-        SwingUtilities.invokeLater(() -> {
+        SwingUtilities. invokeLater(() -> {
             updateStatus("Loaded " + results.size() + " exam results");
             if (examResultsPanel != null) {
                 examResultsPanel.setExamResults(results);
@@ -413,7 +444,8 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         });
     }
     
-    // Helper methods
+    // ==================== Helper methods ====================
+    
     private void setTabsEnabled(boolean enabled) {
         for (int i = 0; i < tabbedPane.getTabCount(); i++) {
             Component tab = tabbedPane.getComponentAt(i);
