@@ -52,12 +52,10 @@ public class ExamService {
                 boolean isAllowed = room.getAllowedStudentIds().contains(studentId);
                 boolean notFinished = !isExamFinished(room, now);
                 
-                // ✅ THAY ĐỔI:  Bỏ điều kiện notCompleted - cho phép hiển thị phòng đã nộp
                 System.out.println("  - Filters: active=" + isActive + ", allowed=" + isAllowed + 
                                  ", notFinished=" + notFinished);
                 
                 if (isActive && isAllowed && notFinished) {
-                    // ✅ THÊM MỚI: Gắn thông tin submission của student vào room
                     attachStudentSubmissionInfo(room, studentId);
                     
                     availableRooms.add(room);
