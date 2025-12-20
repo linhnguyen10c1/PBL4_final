@@ -306,7 +306,7 @@ public class ExamService {
             }
             
             // Get exam result
-            ExamResult result = generateExamResult(session.getSessionId());
+            ExamResult result = generateExamResult(session);
             
             System.out.println("✅ [ExamService] Exam submitted successfully. Score: " + result.getTotalScore());
             return ServiceResult.success("Exam submitted successfully", result);
@@ -498,33 +498,56 @@ public class ExamService {
     /**
      * Generate exam result from session
      */
-    private ExamResult generateExamResult(int sessionId) throws SQLException {
-        ExamSession session = examSessionDAO.findByToken(""); // This needs session lookup by ID
+    private ExamResult generateExamResult(ExamSession session) throws SQLException {
         if (session == null) {
-            throw new SQLException("Session not found");
+            throw new SQLException("Session is null");
+        }
+        
+        // Reload session để lấy data mới nhất sau khi submit (score, status, answers)
+        ExamSession updatedSession = examSessionDAO.findByToken(session.getSessionToken());
+        if (updatedSession == null) {
+            // Fallback:  sử dụng session cũ nếu không tìm thấy
+            System.err.println("⚠️ [ExamService] Could not reload session, using original data");
+            updatedSession = session;
         }
         
         ExamResult result = new ExamResult();
-        result.setSessionId(sessionId);
-        result.setRoomId(session.getRoomId());
-        result.setStudentId(session.getStudentId());
-        result.setStudentName(session.getStudentName());
-        result.setTotalScore(session.getTotalScore());
-        result.setMaxScore(session.getExamRoom().getTotalScore());
-        result.setStatus(session.getStatus());
+        result.setSessionId(updatedSession.getSessionId());
+        result.setRoomId(updatedSession. getRoomId());
+        result.setStudentId(updatedSession.getStudentId());
+        result.setStudentName(updatedSession. getStudentName());
+        result.setTotalScore(updatedSession.getTotalScore());
+        result.setStatus(updatedSession. getStatus());
         
-        // Calculate additional statistics
-        List<ExamAnswer> answers = session.getAnswers();
-        result.setTotalQuestions(answers.size());
-        result.setCorrectAnswers((int) answers.stream().filter(ExamAnswer::isCorrect).count());
-        
-        // Calculate time spent
-        if (session.getStartTime() != null && session.getSubmitTime() != null) {
-            long timeDiff = session.getSubmitTime().getTime() - session.getStartTime().getTime();
-            result.setTimeSpentMinutes((int) (timeDiff / (1000 * 60)));
+        // Safe null check cho ExamRoom
+        if (updatedSession.getExamRoom() != null) {
+            result.setMaxScore(updatedSession. getExamRoom().getTotalScore());
+            result.setTimeLimitMinutes(updatedSession.getExamRoom().getDurationMinutes());
+        } else {
+            result.setMaxScore(100.0); // Default
+            result.setTimeLimitMinutes(0);
         }
         
-        result.setTimeLimitMinutes(session.getExamRoom().getDurationMinutes());
+        // Calculate additional statistics
+        List<ExamAnswer> answers = updatedSession.getAnswers();
+        if (answers != null) {
+            result. setTotalQuestions(answers.size());
+            result.setCorrectAnswers((int) answers.stream().filter(ExamAnswer::isCorrect).count());
+        } else {
+            result.setTotalQuestions(0);
+            result.setCorrectAnswers(0);
+        }
+        
+        // Calculate time spent
+        if (updatedSession. getStartTime() != null && updatedSession.getSubmitTime() != null) {
+            long timeDiff = updatedSession.getSubmitTime().getTime() - updatedSession.getStartTime().getTime();
+            result.setTimeSpentMinutes((int) (timeDiff / (1000 * 60)));
+        } else {
+            result.setTimeSpentMinutes(0);
+        }
+        
+        System.out.println("✅ [ExamService] Generated result - Score: " + result. getTotalScore() + 
+                          ", Correct: " + result. getCorrectAnswers() + "/" + result.getTotalQuestions());
         
         return result;
     }
