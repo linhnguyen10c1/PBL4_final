@@ -347,7 +347,6 @@ public class ExamSessionDAO extends BaseDAO {
         List<Map<String, Object>> results = executeQueryForList(sql, sessionToken);
         if (!results.isEmpty()) {
             ExamSession session = mapToExamSession(results.get(0));
-            // Load answers
             session.setAnswers(getSessionAnswers(session.getSessionId()));
             return session;
         }
