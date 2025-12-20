@@ -222,33 +222,6 @@ public class ExamSessionDAO extends BaseDAO {
     }
     
     /**
-     * Calculate session score
-     */
-//    private double calculateSessionScore(int sessionId) throws SQLException {
-//        String sql = """
-//            SELECT 
-//                COUNT(*) as total_questions,
-//                SUM(CASE WHEN eq.student_answer = q.correct_answer THEN 1 ELSE 0 END) as correct_answers
-//            FROM exam_questions eq
-//            JOIN questions q ON eq.question_id = q.question_id
-//            WHERE eq.session_id = ? AND eq.student_answer IS NOT NULL
-//            """;
-//        
-//        List<Map<String, Object>> results = executeQueryForList(sql, sessionId);
-//        if (!results.isEmpty()) {
-//            Map<String, Object> row = results.get(0);
-//            int totalQuestions = getIntValue(row, "total_questions", 0);
-//            int correctAnswers = getIntValue(row, "correct_answers", 0);
-//            
-//            if (totalQuestions > 0) {
-//                return (double) correctAnswers / totalQuestions * 100.0;
-//            }
-//        }
-//        
-//        return 0.0;
-//    }
-    
-    /**
      * Update correct answers flags
      */
     private void updateCorrectAnswers(int sessionId) throws SQLException {
@@ -431,6 +404,7 @@ public class ExamSessionDAO extends BaseDAO {
         session.setStudentId(getIntValue(row, "student_id", 0));
         session.setSessionToken(getStringValue(row, "session_token"));
         
+        System.out.println("Keys in row: " + row.keySet());
         // Safe timestamp conversion
         session.setStartTime(convertToTimestamp(row.get("start_time")));
         session.setSubmitTime(convertToTimestamp(row.get("submit_time")));

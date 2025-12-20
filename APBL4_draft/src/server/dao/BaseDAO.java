@@ -32,7 +32,7 @@ public abstract class BaseDAO {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     for (int i = 1; i <= columnCount; i++) {
-                        row.put(metaData.getColumnName(i), rs.getObject(i));
+                        row.put(metaData.getColumnLabel(i), rs.getObject(i));
                     }
                     results.add(row);
                 }
