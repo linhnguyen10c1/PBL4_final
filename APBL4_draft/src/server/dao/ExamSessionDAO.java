@@ -428,7 +428,7 @@ public class ExamSessionDAO extends BaseDAO {
     }
     
     /**
-     * Map database row to ExamSession object
+     * Map database row to ExamSession
      */
     private ExamSession mapToExamSession(Map<String, Object> row) {
         ExamSession session = new ExamSession();
@@ -441,11 +441,20 @@ public class ExamSessionDAO extends BaseDAO {
         session.setStartTime(convertToTimestamp(row.get("start_time")));
         session.setSubmitTime(convertToTimestamp(row.get("submit_time")));
         
-        // Read from 'session_score' (student's actual score)
-        Double sessionScore = getDoubleValueOrNull(row, "session_score");
-        if (sessionScore != null) {
-            session.setTotalScore(sessionScore);
+        // Fallback đến 'total_score' cho các query cũ
+        Object sessionScoreObj = row.get("session_score");
+        if (sessionScoreObj != null) {
+            if (sessionScoreObj instanceof Number) {
+                session.setTotalScore(((Number) sessionScoreObj).doubleValue());
+            } else {
+                try {
+                    session.setTotalScore(Double.parseDouble(sessionScoreObj.toString()));
+                } catch (NumberFormatException e) {
+                    session.setTotalScore(0.0);
+                }
+            }
         } else {
+            // Fallback for old queries
             session.setTotalScore(getDoubleValue(row, "total_score", 0.0));
         }
         
@@ -453,7 +462,7 @@ public class ExamSessionDAO extends BaseDAO {
         session.setCreatedAt(safeToString(row.get("created_at")));
         session.setStudentName(getStringValue(row, "student_name"));
         
-        // Create ExamRoom with full info
+        // Tạo ExamRoom đầy đủ
         if (row.containsKey("room_name")) {
             ExamRoom room = new ExamRoom();
             room.setRoomId(getIntValue(row, "room_id", 0));
@@ -468,7 +477,7 @@ public class ExamSessionDAO extends BaseDAO {
             room.setActive(getBooleanValue(row, "room_active", true));
             room.setCreatedBy(getIntValue(row, "created_by", 0));
             
-            // Set start_time and end_time
+            // Set start_time và end_time
             room.setStartTime(convertToTimestamp(row.get("room_start_time")));
             room.setEndTime(convertToTimestamp(row.get("room_end_time")));
             
