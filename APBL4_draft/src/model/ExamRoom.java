@@ -214,6 +214,6 @@ public class ExamRoom {
         if (! hasStudentSubmitted() || studentScore == null || maxScoreForStudent == null) {
             return "-";
         }
-        return String.format("%.1f/%. 1f", studentScore, maxScoreForStudent);
+        return String.format("%.1f/%.1f", studentScore, maxScoreForStudent);
     }
 }
