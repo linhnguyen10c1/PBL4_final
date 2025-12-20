@@ -257,47 +257,74 @@ public class StudentExamController extends BaseController {
     }
     
     /**
-     * Submit exam
-     */
-    public boolean submitExam(String sessionToken, boolean isAutoSubmit) {
-        try {
-            logAction("submitExam", "Submitting exam, auto: " + isAutoSubmit);
-            
-            if (!validateSession()) {
-                return false;
-            }
-            
-            Map<String, Object> requestData = new HashMap<>();
-            requestData.put("sessionToken", sessionToken);
-            requestData.put("isAutoSubmit", isAutoSubmit);
-            
-            ResponseData response = sendJsonRequest(Protocol.SUBMIT_EXAM, requestData);
-            
-            if (response.isSuccess()) {
-                logAction("submitExam", "Exam submitted successfully");
-                
-                // Parse exam result from response
-                String[] parts = response.getData().split("\\|", 2);
-                if (parts.length >= 2) {
-                    ExamResult result = JsonUtil.fromJson(parts[1], ExamResult.class);
-                    if (result != null && listener != null) {
-                        listener.onExamSubmitted(result);
-                    }
-                }
-                
-                showSuccessMessage("Success", "Exam submitted successfully!");
-                return true;
-            } else {
-                handleServerError(response.getMessage());
-                return false;
-            }
-            
-        } catch (Exception e) {
-            handleNetworkError(e);
-            return false;
-        }
-    }
-    
+	 * Submit exam
+	 */
+	public boolean submitExam(String sessionToken, boolean isAutoSubmit) {
+	    try {
+	        logAction("submitExam", "Submitting exam, auto:  " + isAutoSubmit);
+	        
+	        if (! validateSession()) {
+	            return false;
+	        }
+	        
+	        Map<String, Object> requestData = new HashMap<>();
+	        requestData.put("sessionToken", sessionToken);
+	        requestData.put("isAutoSubmit", isAutoSubmit);
+	        
+	        ResponseData response = sendJsonRequest(Protocol. SUBMIT_EXAM, requestData);
+	        
+	        if (response.isSuccess()) {
+	            logAction("submitExam", "Exam submitted successfully");
+	            
+	            // ✅ FIX: Parse exam result from response - xử lý cả 2 format
+	            String responseData = response.getData();
+	            System.out.println("🔍 [DEBUG] SUBMIT_EXAM response data: " + 
+	                              responseData.substring(0, Math.min(200, responseData.length())) + "...");
+	            
+	            ExamResult result = null;
+	            
+	            // Check if response has SUCCESS| prefix
+	            if (responseData.startsWith("SUCCESS|")) {
+	                String[] parts = responseData. split("\\|", 2);
+	                if (parts.length >= 2) {
+	                    System.out.println("🔍 [DEBUG] Parsing JSON from parts[1]");
+	                    result = JsonUtil.fromJson(parts[1], ExamResult.class);
+	                }
+	            } else {
+	                // Parse directly if no prefix (JSON thuần)
+	                System.out.println("🔍 [DEBUG] Parsing JSON directly");
+	                result = JsonUtil.fromJson(responseData, ExamResult.class);
+	            }
+	            
+	            System.out.println("🔍 [DEBUG] Parsed ExamResult: " + (result != null ? "SUCCESS" : "NULL"));
+	            
+	            if (result != null) {
+	                System.out.println("🔍 [DEBUG] ExamResult - Score: " + result. getTotalScore() + 
+	                                  ", Correct: " + result. getCorrectAnswers() + "/" + result.getTotalQuestions());
+	                
+	                if (listener != null) {
+	                    System.out.println("🔍 [DEBUG] Calling listener. onExamSubmitted()");
+	                    listener.onExamSubmitted(result);
+	                }
+	            } else {
+	                System.err.println("❌ [DEBUG] Failed to parse ExamResult from response");
+	            }
+	            
+	            showSuccessMessage("Success", "Exam submitted successfully!");
+	            return true;
+	        } else {
+	            handleServerError(response.getMessage());
+	            return false;
+	        }
+	        
+	    } catch (Exception e) {
+	        System.err.println("❌ [DEBUG] Exception in submitExam: " + e.getMessage());
+	        e.printStackTrace();
+	        handleNetworkError(e);
+	        return false;
+	    }
+	}
+	
     /**
      * Get exam session info
      */
