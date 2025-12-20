@@ -1,22 +1,19 @@
-package client.ui.student.components;
+package client.ui.student. components;
 
 import model.ExamRoom;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table. DefaultTableModel;
+import javax.swing.table. DefaultTableCellRenderer;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java. awt.event.MouseAdapter;
+import java. awt.event.MouseEvent;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
 /**
  * ExamRoomsTable - Table component for displaying available exam rooms
- * 
- * @author linhnguyen10c1
- * @since 2025-10-30 04:01:54 UTC
  */
 public class ExamRoomsTable extends JPanel {
     
@@ -44,10 +41,9 @@ public class ExamRoomsTable extends JPanel {
     private void initializeUI() {
         setLayout(new BorderLayout());
         
-        // Create table model
         String[] columnNames = {
-            "Room Name", "Subject", "Questions", "Duration", "Score", 
-            "Start Time", "End Time", "Status", "Password"
+            "Room Name", "Subject", "Questions", "Duration", "Max Score", 
+            "Start Time", "End Time", "Status", "My Score", "Password"
         };
         
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -60,8 +56,9 @@ public class ExamRoomsTable extends JPanel {
             public Class<?> getColumnClass(int column) {
                 switch (column) {
                     case 2: case 3: case 4: return Integer.class;
-                    case 8: return String.class; // Changed from Boolean to String
-                    default: return String.class;
+                    case 8: return String.class; // My Score
+                    case 9: return String.class; // Password
+                    default:  return String.class;
                 }
             }
         };
@@ -77,42 +74,46 @@ public class ExamRoomsTable extends JPanel {
         // Set column widths
         setupColumnWidths();
         
-        // Custom renderer for status column
+        // Custom renderer for status column (index 7)
         table.getColumnModel().getColumn(7).setCellRenderer(new StatusCellRenderer());
         
-        // Custom renderer for password column
-        table.getColumnModel().getColumn(8).setCellRenderer(new PasswordCellRenderer());
+        // Custom renderer for My Score column (index 8)
+        table.getColumnModel().getColumn(8).setCellRenderer(new ScoreCellRenderer());
+        
+        // Custom renderer for password column (index 9)
+        table.getColumnModel().getColumn(9).setCellRenderer(new PasswordCellRenderer());
         
         // Scroll pane
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Available Exam Rooms"));
-        scrollPane.setPreferredSize(new Dimension(1000, 400));
+        scrollPane.setBorder(BorderFactory. createTitledBorder("Available Exam Rooms"));
+        scrollPane.setPreferredSize(new Dimension(1100, 400));
         
         add(scrollPane, BorderLayout.CENTER);
     }
     
     private void setupColumnWidths() {
-        table.getColumnModel().getColumn(0).setPreferredWidth(200); // Room Name
-        table.getColumnModel().getColumn(1).setPreferredWidth(120); // Subject
-        table.getColumnModel().getColumn(2).setPreferredWidth(80);  // Questions
-        table.getColumnModel().getColumn(3).setPreferredWidth(80);  // Duration
-        table.getColumnModel().getColumn(4).setPreferredWidth(60);  // Score
-        table.getColumnModel().getColumn(5).setPreferredWidth(120); // Start Time
-        table.getColumnModel().getColumn(6).setPreferredWidth(120); // End Time
+        table.getColumnModel().getColumn(0).setPreferredWidth(180); // Room Name
+        table.getColumnModel().getColumn(1).setPreferredWidth(100); // Subject
+        table.getColumnModel().getColumn(2).setPreferredWidth(70);  // Questions
+        table.getColumnModel().getColumn(3).setPreferredWidth(70);  // Duration
+        table.getColumnModel().getColumn(4).setPreferredWidth(70);  // Max Score
+        table.getColumnModel().getColumn(5).setPreferredWidth(110); // Start Time
+        table.getColumnModel().getColumn(6).setPreferredWidth(110); // End Time
         table.getColumnModel().getColumn(7).setPreferredWidth(100); // Status
-        table.getColumnModel().getColumn(8).setPreferredWidth(80);  // Password
+        table.getColumnModel().getColumn(8).setPreferredWidth(90);  // My Score (NEW)
+        table.getColumnModel().getColumn(9).setPreferredWidth(80);  // Password
     }
     
     private void setupEventHandlers() {
         // Selection listener
         table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int selectedRow = table.getSelectedRow();
+            if (! e.getValueIsAdjusting()) {
+                int selectedRow = table. getSelectedRow();
                 if (selectedRow >= 0 && selectionListener != null && examRooms != null) {
                     ExamRoom selectedRoom = examRooms.get(selectedRow);
                     selectionListener.onExamRoomSelected(selectedRoom);
                 } else if (selectionListener != null) {
-                    selectionListener.onExamRoomDeselected();
+                    selectionListener. onExamRoomDeselected();
                 }
             }
         });
@@ -125,7 +126,7 @@ public class ExamRoomsTable extends JPanel {
                     int selectedRow = table.getSelectedRow();
                     if (selectedRow >= 0 && selectionListener != null && examRooms != null) {
                         ExamRoom selectedRoom = examRooms.get(selectedRow);
-                        selectionListener.onExamRoomDoubleClicked(selectedRoom);
+                        selectionListener. onExamRoomDoubleClicked(selectedRoom);
                     }
                 }
             }
@@ -152,7 +153,8 @@ public class ExamRoomsTable extends JPanel {
                     formatTimestamp(room.getStartTime()),
                     formatTimestamp(room.getEndTime()),
                     getExamStatus(room),
-                    getPasswordStatus(room) // Changed to String method
+                    room.getStudentScoreDisplay(),  // ✅ THÊM MỚI: "8.5/10.0" hoặc "-"
+                    getPasswordStatus(room)
                 };
                 tableModel.addRow(rowData);
             }
@@ -171,8 +173,16 @@ public class ExamRoomsTable extends JPanel {
         }
     }
     
+    /**
+     * Thêm trạng thái "Submitted" cho phòng đã nộp bài
+     */
     private String getExamStatus(ExamRoom room) {
-        if (!room.isActive()) {
+        // ✅ THÊM MỚI: Check submitted trước các trạng thái khác
+        if (room.hasStudentSubmitted()) {
+            return "Submitted";
+        }
+        
+        if (! room.isActive()) {
             return "Inactive";
         }
         
@@ -200,7 +210,7 @@ public class ExamRoomsTable extends JPanel {
     }
     
     public ExamRoom getSelectedExamRoom() {
-        int selectedRow = table.getSelectedRow();
+        int selectedRow = table. getSelectedRow();
         if (selectedRow >= 0 && examRooms != null && selectedRow < examRooms.size()) {
             return examRooms.get(selectedRow);
         }
@@ -221,6 +231,7 @@ public class ExamRoomsTable extends JPanel {
     
     /**
      * Custom renderer for status column
+     * ✅ UPDATED: Thêm case "Submitted"
      */
     private static class StatusCellRenderer extends DefaultTableCellRenderer {
         @Override
@@ -232,7 +243,7 @@ public class ExamRoomsTable extends JPanel {
                 String status = value.toString();
                 setHorizontalAlignment(SwingConstants.CENTER);
                 
-                if (!isSelected) {
+                if (! isSelected) {
                     switch (status) {
                         case "Available":
                             setForeground(new Color(0, 150, 0));
@@ -250,6 +261,11 @@ public class ExamRoomsTable extends JPanel {
                             setForeground(Color.GRAY);
                             setText("⏸️ Inactive");
                             break;
+                        // ✅ THÊM MỚI: Case Submitted
+                        case "Submitted": 
+                            setForeground(new Color(100, 100, 100));
+                            setText("✔️ Submitted");
+                            break;
                         default:
                             setForeground(Color.BLACK);
                             setText(status);
@@ -258,6 +274,38 @@ public class ExamRoomsTable extends JPanel {
                 } else {
                     setForeground(Color.WHITE);
                     setText(status);
+                }
+            }
+            
+            return this;
+        }
+    }
+    
+    /**
+     * Custom renderer for My Score column
+     */
+    private static class ScoreCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            super. getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            
+            if (value != null) {
+                String score = value.toString();
+                setHorizontalAlignment(SwingConstants. CENTER);
+                
+                if (!isSelected) {
+                    if ("-".equals(score)) {
+                        setForeground(Color. GRAY);
+                        setText("-");
+                    } else {
+                        // Có điểm - hiển thị với màu xanh và icon
+                        setForeground(new Color(0, 100, 200));
+                        setText("🏆 " + score);
+                    }
+                } else {
+                    setForeground(Color.WHITE);
+                    setText(score);
                 }
             }
             
@@ -278,7 +326,7 @@ public class ExamRoomsTable extends JPanel {
                 String passwordStatus = value.toString();
                 setHorizontalAlignment(SwingConstants.CENTER);
                 
-                if (!isSelected) {
+                if (! isSelected) {
                     switch (passwordStatus) {
                         case "Required":
                             setForeground(new Color(200, 100, 0));
