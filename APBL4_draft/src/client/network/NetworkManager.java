@@ -155,7 +155,7 @@ public class NetworkManager{
          heartbeatThread.start();
 		
 	}
-    public String sendRequest(String action, String data) throws IOException {
+    public synchronized String sendRequest(String action, String data) throws IOException {
         if (!isConnected) {
             throw new IOException("Not connected to server");
         }

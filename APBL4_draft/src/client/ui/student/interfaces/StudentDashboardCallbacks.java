@@ -2,6 +2,15 @@ package client.ui.student.interfaces;
 
 import model.*;
 
+/**
+ * Interface cho các callbacks từ Student Dashboard panels
+ * 
+ * ✅ FIX:  Đã xóa method onNavigateToQuestion(int questionIndex)
+ * Lý do:  Method này gây ra vòng lặp vô hạn khi: 
+ * - ExamInterfacePanel gọi callbacks.onNavigateToQuestion()
+ * - StudentDashboard nhận callback và gọi lại examInterfacePanel. navigateToQuestion()
+ * - Vòng lặp tiếp tục... 
+ */
 public interface StudentDashboardCallbacks {
     // Navigation callbacks
     void onLogoutRequested();
@@ -17,7 +26,7 @@ public interface StudentDashboardCallbacks {
     // Answer management callbacks
     void onAnswerChanged(int questionId, String answer);
     void onAnswerSaved(int questionId, String answer);
-    void onNavigateToQuestion(int questionIndex);
+    // ✅ FIX: Đã xóa - void onNavigateToQuestion(int questionIndex);
     
     // Results callbacks
     void onViewResultsRequested();
