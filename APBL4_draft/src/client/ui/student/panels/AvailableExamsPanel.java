@@ -52,7 +52,6 @@ public class AvailableExamsPanel extends JPanel {
         examRoomsTable.setSelectionListener(new ExamRoomsTable.ExamRoomSelectionListener() {
             @Override
             public void onExamRoomSelected(ExamRoom examRoom) {
-                // ✅ THÊM MỚI: Check nếu đã nộp bài thì disable button
                 if (examRoom.hasStudentSubmitted()) {
                     joinButton. setEnabled(false);
                     updateStatus("Selected: " + examRoom.getRoomName() + 
@@ -71,7 +70,6 @@ public class AvailableExamsPanel extends JPanel {
             
             @Override
             public void onExamRoomDoubleClicked(ExamRoom examRoom) {
-                // ✅ THÊM MỚI: Block double-click nếu đã nộp bài
                 if (examRoom.hasStudentSubmitted()) {
                     return; // Không làm gì
                 }

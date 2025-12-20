@@ -153,7 +153,7 @@ public class ExamRoomsTable extends JPanel {
                     formatTimestamp(room.getStartTime()),
                     formatTimestamp(room.getEndTime()),
                     getExamStatus(room),
-                    room.getStudentScoreDisplay(),  // ✅ THÊM MỚI: "8.5/10.0" hoặc "-"
+                    room.getStudentScoreDisplay(), 
                     getPasswordStatus(room)
                 };
                 tableModel.addRow(rowData);
@@ -173,11 +173,7 @@ public class ExamRoomsTable extends JPanel {
         }
     }
     
-    /**
-     * Thêm trạng thái "Submitted" cho phòng đã nộp bài
-     */
     private String getExamStatus(ExamRoom room) {
-        // ✅ THÊM MỚI: Check submitted trước các trạng thái khác
         if (room.hasStudentSubmitted()) {
             return "Submitted";
         }
@@ -231,7 +227,6 @@ public class ExamRoomsTable extends JPanel {
     
     /**
      * Custom renderer for status column
-     * ✅ UPDATED: Thêm case "Submitted"
      */
     private static class StatusCellRenderer extends DefaultTableCellRenderer {
         @Override
@@ -261,7 +256,6 @@ public class ExamRoomsTable extends JPanel {
                             setForeground(Color.GRAY);
                             setText("⏸️ Inactive");
                             break;
-                        // ✅ THÊM MỚI: Case Submitted
                         case "Submitted": 
                             setForeground(new Color(100, 100, 100));
                             setText("✔️ Submitted");
@@ -299,7 +293,6 @@ public class ExamRoomsTable extends JPanel {
                         setForeground(Color. GRAY);
                         setText("-");
                     } else {
-                        // Có điểm - hiển thị với màu xanh và icon
                         setForeground(new Color(0, 100, 200));
                         setText("🏆 " + score);
                     }
