@@ -281,8 +281,7 @@ public class ExamSessionDAO extends BaseDAO {
                 es.submit_time, 
                 es.total_score as session_score,
                 es.status, 
-                es.created_at, 
-                es.updated_at,
+                es.created_at,
                 er.room_name, 
                 er.room_password,
                 er.subject_id, 
@@ -304,7 +303,7 @@ public class ExamSessionDAO extends BaseDAO {
             """;
         
         List<Map<String, Object>> results = executeQueryForList(sql, roomId, studentId);
-        if (!results.isEmpty()) {
+        if (! results.isEmpty()) {
             return mapToExamSession(results.get(0));
         }
         return null;
@@ -324,8 +323,7 @@ public class ExamSessionDAO extends BaseDAO {
                 es.submit_time, 
                 es.total_score as session_score,
                 es.status, 
-                es.created_at, 
-                es.updated_at,
+                es.created_at,
                 er.room_name, 
                 er.room_password,
                 er.subject_id, 
@@ -432,7 +430,6 @@ public class ExamSessionDAO extends BaseDAO {
     
     /**
      * Map database row to ExamSession object
-     * ✅ FIXED: Read from 'session_score' column instead of 'total_score' to get correct student score
      */
     private ExamSession mapToExamSession(Map<String, Object> row) {
         ExamSession session = new ExamSession();
@@ -445,18 +442,16 @@ public class ExamSessionDAO extends BaseDAO {
         session.setStartTime(convertToTimestamp(row.get("start_time")));
         session.setSubmitTime(convertToTimestamp(row.get("submit_time")));
         
-        // Fallback to 'total_score' for backward compatibility with other queries
+        // Read from 'session_score' (student's actual score)
         Double sessionScore = getDoubleValueOrNull(row, "session_score");
         if (sessionScore != null) {
             session.setTotalScore(sessionScore);
         } else {
-            // Fallback for queries that don't use the new alias
             session.setTotalScore(getDoubleValue(row, "total_score", 0.0));
         }
         
         session.setStatus(getStringValue(row, "status"));
         session.setCreatedAt(safeToString(row.get("created_at")));
-        session.setUpdatedAt(safeToString(row.get("updated_at")));
         session.setStudentName(getStringValue(row, "student_name"));
         
         // Create ExamRoom with full info
