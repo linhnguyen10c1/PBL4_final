@@ -11,12 +11,6 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.UUID;
 
-/**
- * ExamSession DAO - Data access for exam sessions
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 15:54:30 UTC
- */
 public class ExamSessionDAO extends BaseDAO {
     
     /**
