@@ -496,62 +496,121 @@ public class ExamService {
         return now.before(room.getStartTime());
     }
     /**
-     * Generate exam result from session
-     */
-    private ExamResult generateExamResult(ExamSession session) throws SQLException {
-        if (session == null) {
-            throw new SQLException("Session is null");
-        }
-        
-        // Reload session để lấy data mới nhất sau khi submit (score, status, answers)
-        ExamSession updatedSession = examSessionDAO.findByToken(session.getSessionToken());
-        if (updatedSession == null) {
-            // Fallback:  sử dụng session cũ nếu không tìm thấy
-            System.err.println("⚠️ [ExamService] Could not reload session, using original data");
-            updatedSession = session;
-        }
-        
-        ExamResult result = new ExamResult();
-        result.setSessionId(updatedSession.getSessionId());
-        result.setRoomId(updatedSession. getRoomId());
-        result.setStudentId(updatedSession.getStudentId());
-        result.setStudentName(updatedSession. getStudentName());
-        result.setTotalScore(updatedSession.getTotalScore());
-        result.setStatus(updatedSession. getStatus());
-        
-        // Safe null check cho ExamRoom
-        if (updatedSession.getExamRoom() != null) {
-            result.setMaxScore(updatedSession. getExamRoom().getTotalScore());
-            result.setTimeLimitMinutes(updatedSession.getExamRoom().getDurationMinutes());
-        } else {
-            result.setMaxScore(100.0); // Default
-            result.setTimeLimitMinutes(0);
-        }
-        
-        // Calculate additional statistics
-        List<ExamAnswer> answers = updatedSession.getAnswers();
-        if (answers != null) {
-            result. setTotalQuestions(answers.size());
-            result.setCorrectAnswers((int) answers.stream().filter(ExamAnswer::isCorrect).count());
-        } else {
-            result.setTotalQuestions(0);
-            result.setCorrectAnswers(0);
-        }
-        
-        // Calculate time spent
-        if (updatedSession. getStartTime() != null && updatedSession.getSubmitTime() != null) {
-            long timeDiff = updatedSession.getSubmitTime().getTime() - updatedSession.getStartTime().getTime();
-            result.setTimeSpentMinutes((int) (timeDiff / (1000 * 60)));
-        } else {
-            result.setTimeSpentMinutes(0);
-        }
-        
-        System.out.println("✅ [ExamService] Generated result - Score: " + result. getTotalScore() + 
-                          ", Correct: " + result. getCorrectAnswers() + "/" + result.getTotalQuestions());
-        
-        return result;
+	 * Generate exam result from session
+	 */
+	private ExamResult generateExamResult(ExamSession session) throws SQLException {
+	    if (session == null) {
+	        throw new SQLException("Session is null");
+	    }
+	    
+	    // Reload session để lấy data mới nhất sau khi submit (score, status, answers)
+	    ExamSession updatedSession = examSessionDAO.findByToken(session.getSessionToken());
+	    if (updatedSession == null) {
+	        // Fallback:  sử dụng session cũ nếu không tìm thấy
+	        System.err.println("⚠️ [ExamService] Could not reload session, using original data");
+	        updatedSession = session;
+	    }
+	    
+	    ExamResult result = new ExamResult();
+	    result.setSessionId(updatedSession. getSessionId());
+	    result.setRoomId(updatedSession.getRoomId());
+	    result.setStudentId(updatedSession.getStudentId());
+	    result.setStudentName(updatedSession.getStudentName());
+	    result.setTotalScore(updatedSession.getTotalScore());
+	    result.setStatus(updatedSession. getStatus());
+	    
+	    // ✅ THÊM: Set thời gian nộp bài
+	    if (updatedSession. getSubmitTime() != null) {
+	        result. setSubmittedAt(updatedSession.getSubmitTime().toString());
+	    } else {
+	        result.setSubmittedAt(new java.sql.Timestamp(System.currentTimeMillis()).toString());
+	    }
+	    
+	    // Safe null check cho ExamRoom và set thêm thông tin
+	    if (updatedSession.getExamRoom() != null) {
+	        ExamRoom room = updatedSession.getExamRoom();
+	        result.setMaxScore(room.getTotalScore());
+	        result.setTimeLimitMinutes(room. getDurationMinutes());
+	        
+	        // ✅ THÊM: Set room name và subject name
+	        result.setRoomName(room.getRoomName());
+	        result.setSubjectName(room.getSubjectName());
+	    } else {
+	        result.setMaxScore(100.0);
+	        result.setTimeLimitMinutes(0);
+	        result.setRoomName("Unknown Exam");
+	        result.setSubjectName("Unknown Subject");
+	    }
+	    
+	    // Calculate additional statistics
+	    List<ExamAnswer> answers = updatedSession.getAnswers();
+	    if (answers != null && ! answers.isEmpty()) {
+	        result.setTotalQuestions(answers.size());
+	        result.setCorrectAnswers((int) answers.stream().filter(ExamAnswer::isCorrect).count());
+	    } else {
+	        // Nếu answers rỗng, thử load lại từ DAO
+	        try {
+	            List<ExamAnswer> reloadedAnswers = examSessionDAO.getSessionAnswers(updatedSession.getSessionId());
+	            if (reloadedAnswers != null && !reloadedAnswers. isEmpty()) {
+	                result.setTotalQuestions(reloadedAnswers.size());
+	                result. setCorrectAnswers((int) reloadedAnswers.stream().filter(ExamAnswer::isCorrect).count());
+	            } else {
+	                result.setTotalQuestions(0);
+	                result.setCorrectAnswers(0);
+	            }
+	        } catch (Exception e) {
+	            System.err.println("⚠️ [ExamService] Could not reload answers: " + e.getMessage());
+	            result.setTotalQuestions(0);
+	            result.setCorrectAnswers(0);
+	        }
+	    }
+	    
+	    // ✅ THÊM:  Tính percentage và grade
+	    double percentage = 0.0;
+	    if (result.getMaxScore() > 0) {
+	        percentage = (result.getTotalScore() / result.getMaxScore()) * 100.0;
+	    } else if (result.getTotalQuestions() > 0) {
+	        percentage = ((double) result.getCorrectAnswers() / result.getTotalQuestions()) * 100.0;
+	    }
+	    result.setPercentage(percentage);
+	    result.setGrade(calculateGrade(percentage));
+	    
+	    // Calculate time spent
+	    if (updatedSession.getStartTime() != null && updatedSession.getSubmitTime() != null) {
+	        long timeDiff = updatedSession.getSubmitTime().getTime() - updatedSession.getStartTime().getTime();
+	        result.setTimeSpentMinutes((int) (timeDiff / (1000 * 60)));
+	    } else {
+	        result.setTimeSpentMinutes(0);
+	    }
+	    
+	    System.out.println("✅ [ExamService] Generated result - Score: " + result.getTotalScore() + 
+	                      "/" + result.getMaxScore() + " (" + String.format("%.1f", percentage) + "%)" +
+	                      ", Grade: " + result. getGrade() +
+	                      ", Correct: " + result.getCorrectAnswers() + "/" + result.getTotalQuestions());
+	    
+	    return result;
+	}
+
+/**
+ * Calculate grade based on percentage
+ */
+private String calculateGrade(double percentage) {
+    if (percentage >= 90) {
+        return "A+";
+    } else if (percentage >= 85) {
+        return "A";
+    } else if (percentage >= 80) {
+        return "B+";
+    } else if (percentage >= 70) {
+        return "B";
+    } else if (percentage >= 60) {
+        return "C";
+    } else if (percentage >= 50) {
+        return "D";
+    } else {
+        return "F";
     }
-    
+}
     /**
      * Validation Result inner class
      */
