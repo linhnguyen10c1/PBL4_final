@@ -16,11 +16,6 @@ import java.util.concurrent.Executors;
 
 /**
  * Student Dashboard
- * 
- * ✅ FIX:  Đã sửa các vấn đề sau:
- * 1. Xóa onNavigateToQuestion() - gây vòng lặp vô hạn
- * 2. Dùng ExecutorService thay vì new Thread() - hiệu quả hơn
- * 3. Thêm shutdown cho executor khi logout
  */
 public class StudentDashboard extends JFrame implements StudentDashboardCallbacks, StudentExamController. ExamListener {
     
@@ -43,7 +38,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     // Current state
     private ExamSession currentExamSession;
     
-    // ✅ FIX: ExecutorService để xử lý save answer async
     // Dùng single thread để đảm bảo các request được gửi tuần tự
     private final ExecutorService answerSaveExecutor = Executors. newSingleThreadExecutor();
     
@@ -176,7 +170,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     /**
-     * ✅ FIX: Shutdown executor service gracefully
+     * Shutdown executor service gracefully
      */
     private void shutdownExecutor() {
         try {
@@ -284,19 +278,13 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     /**
-     * ✅ FIX: Async answer save using ExecutorService
-     * 
-     * Thay đổi: 
-     * - Dùng ExecutorService thay vì new Thread() mỗi lần
-     * - Single thread executor đảm bảo các request gửi tuần tự
-     * - Không block UI thread
+     * Async answer save using ExecutorService
      */
     @Override
     public void onAnswerChanged(int questionId, String answer) {
         if (currentExamSession != null) {
             final String sessionToken = currentExamSession.getSessionToken();
             
-            // ✅ FIX: Submit task vào executor thay vì tạo thread mới
             answerSaveExecutor.submit(() -> {
                 try {
                     System.out.println("📤 [AsyncSave] Saving answer Q" + questionId + " = " + answer);
