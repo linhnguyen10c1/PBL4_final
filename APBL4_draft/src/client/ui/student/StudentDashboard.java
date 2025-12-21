@@ -16,11 +16,6 @@ import java.util.concurrent.Executors;
 
 /**
  * Student Dashboard
- * 
- * ✅ FIX:  Đã sửa các vấn đề sau:
- * 1. Xóa onNavigateToQuestion() - gây vòng lặp vô hạn
- * 2. Dùng ExecutorService thay vì new Thread() - hiệu quả hơn
- * 3. Thêm shutdown cho executor khi logout
  */
 public class StudentDashboard extends JFrame implements StudentDashboardCallbacks, StudentExamController. ExamListener {
     
@@ -38,13 +33,11 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     // Panels
     private AvailableExamsPanel availableExamsPanel;
     private ExamInterfacePanel examInterfacePanel;
-    private ExamResultsPanel examResultsPanel;
     private StudentProfilePanel profilePanel;
     
     // Current state
     private ExamSession currentExamSession;
     
-    // ✅ FIX: ExecutorService để xử lý save answer async
     // Dùng single thread để đảm bảo các request được gửi tuần tự
     private final ExecutorService answerSaveExecutor = Executors. newSingleThreadExecutor();
     
@@ -103,10 +96,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         
         // Exam Interface Tab (initially hidden)
         examInterfacePanel = new ExamInterfacePanel(this, examController);
-        
-        // Results Tab
-        examResultsPanel = new ExamResultsPanel(this, examController);
-        tabbedPane.addTab("📊 My Results", examResultsPanel);
         
         // Profile Tab
         profilePanel = new StudentProfilePanel(this, loginController. getCurrentUser());
@@ -181,7 +170,7 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     /**
-     * ✅ FIX: Shutdown executor service gracefully
+     * Shutdown executor service gracefully
      */
     private void shutdownExecutor() {
         try {
@@ -289,19 +278,13 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     /**
-     * ✅ FIX: Async answer save using ExecutorService
-     * 
-     * Thay đổi: 
-     * - Dùng ExecutorService thay vì new Thread() mỗi lần
-     * - Single thread executor đảm bảo các request gửi tuần tự
-     * - Không block UI thread
+     * Async answer save using ExecutorService
      */
     @Override
     public void onAnswerChanged(int questionId, String answer) {
         if (currentExamSession != null) {
             final String sessionToken = currentExamSession.getSessionToken();
             
-            // ✅ FIX: Submit task vào executor thay vì tạo thread mới
             answerSaveExecutor.submit(() -> {
                 try {
                     System.out.println("📤 [AsyncSave] Saving answer Q" + questionId + " = " + answer);
@@ -323,28 +306,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     @Override
     public void onAnswerSaved(int questionId, String answer) {
         updateStatus("Answer saved");
-    }
-    
-    // ✅ FIX: Đã xóa method onNavigateToQuestion() - method này gây vòng lặp vô hạn
-    // Không cần implement nữa vì đã xóa khỏi interface
-    
-    @Override
-    public void onViewResultsRequested() {
-        tabbedPane.setSelectedComponent(examResultsPanel);
-        examResultsPanel. loadResults();
-    }
-    
-    @Override
-    public void onRefreshResultsRequested() {
-        updateStatus("Refreshing exam results...");
-        examController.getExamResults();
-    }
-    
-    @Override
-    public void onResultDetailRequested(ExamResult result) {
-        client.ui.student.dialogs.ExamResultDialog dialog = 
-            new client. ui.student.dialogs.ExamResultDialog(this, result);
-        dialog.setVisible(true);
     }
     
     @Override
@@ -405,25 +366,14 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             
             // Re-enable other tabs
             setTabsEnabled(true);
+            tabbedPane.setSelectedIndex(0);
+            
+            if (availableExamsPanel != null) {
+                availableExamsPanel.loadAvailableExams();
+            }
             
             // Show result
             updateStatus("Exam submitted successfully.  Score: " + String.format("%.1f%%", result.getPercentage()));
-            
-            // Show result dialog
-            onResultDetailRequested(result);
-            
-            // Switch to results tab
-            onViewResultsRequested();
-        });
-    }
-    
-    @Override
-    public void onExamResultsLoaded(List<ExamResult> results) {
-        SwingUtilities. invokeLater(() -> {
-            updateStatus("Loaded " + results.size() + " exam results");
-            if (examResultsPanel != null) {
-                examResultsPanel.setExamResults(results);
-            }
         });
     }
     
