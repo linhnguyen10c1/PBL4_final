@@ -29,7 +29,7 @@ public class EditQuestionDialog extends JDialog {
     private JTextField optionDField;
     private JComboBox<String> correctAnswerComboBox;
     private JComboBox<String> difficultyComboBox;
-    private JCheckBox activeCheckBox;
+    private JCheckBox reactivateCheckBox;
     
     public EditQuestionDialog(JFrame parent, Question question, List<Subject> subjects) {
         super(parent, "Edit Question", true);
@@ -128,11 +128,15 @@ public class EditQuestionDialog extends JDialog {
         difficultyComboBox = new JComboBox<>(new String[]{"EASY", "MEDIUM", "HARD"});
         formPanel.add(difficultyComboBox, gbc);
         row++;
-        
+        row++;
         // Active
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2;
-        activeCheckBox = new JCheckBox("Active");
-        formPanel.add(activeCheckBox, gbc);
+        if (!originalQuestion.isActive()) {
+        	gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+            reactivateCheckBox = new JCheckBox("Reactivate Question");
+            reactivateCheckBox.setForeground(Color.BLUE);
+            formPanel.add(reactivateCheckBox,  gbc);
+        }
+        row++;
         
         // Buttons panel
         JPanel buttonPanel = new JPanel(new FlowLayout());
@@ -168,7 +172,9 @@ public class EditQuestionDialog extends JDialog {
             optionDField.setText(originalQuestion.getOptionD());
             correctAnswerComboBox.setSelectedItem(originalQuestion.getCorrectAnswer());
             difficultyComboBox.setSelectedItem(originalQuestion.getDifficulty());
-            activeCheckBox.setSelected(originalQuestion.isActive());
+            if (reactivateCheckBox != null) {
+                reactivateCheckBox.setSelected(false); // mặc định chưa tick
+            }
         }
     }
     
@@ -188,7 +194,13 @@ public class EditQuestionDialog extends JDialog {
         Subject selectedSubject = (Subject) subjectComboBox.getSelectedItem();
         String correctAnswer = (String) correctAnswerComboBox.getSelectedItem();
         String difficulty = (String) difficultyComboBox.getSelectedItem();
-        boolean active = activeCheckBox.isSelected();
+        boolean active;
+        if (originalQuestion.isActive()) {
+            active = true; // đang active thì giữ nguyên
+        } else {
+            active = reactivateCheckBox != null && reactivateCheckBox.isSelected();
+        }
+
         
         // Validation
         if (questionText.isEmpty()) {

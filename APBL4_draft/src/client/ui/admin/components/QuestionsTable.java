@@ -7,19 +7,18 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
-/**
- * Questions Table Component
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 04:02:31 UTC
- */
 public class QuestionsTable extends JPanel {
     
     private JTable table;
     private DefaultTableModel tableModel;
     private QuestionSelectionListener selectionListener;
+    private static final DateTimeFormatter INPUT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter OUTPUT_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     
     public interface QuestionSelectionListener {
         void onQuestionSelected(Question question);
@@ -50,6 +49,7 @@ public class QuestionsTable extends JPanel {
             public Class<?> getColumnClass(int column) {
                 switch (column) {
                     case 0: return Integer.class;
+                    case 5: return Boolean.class;
                     default: return String.class;
                 }
             }
@@ -118,8 +118,8 @@ public class QuestionsTable extends JPanel {
                 truncateText(question.getQuestionText(), 80),
                 question.getCorrectAnswer() + " - " + truncateText(question.getCorrectOptionText(), 30),
                 question.getDifficulty(),
-                question.isActive() ? "Active" : "Inactive",
-                formatCreatedAt(question.getCreatedAt())
+                question.isActive(),
+                formatDate(question.getCreatedAt())
             };
             tableModel.addRow(rowData);
         }
@@ -137,8 +137,8 @@ public class QuestionsTable extends JPanel {
         Question question = new Question();
         question.setQuestionId((Integer) tableModel.getValueAt(row, 0));
         question.setSubjectName((String) tableModel.getValueAt(row, 1));
-        // Note: This is a simplified object for selection
-        // Full object should be retrieved from controller if needed
+        Boolean isActive = (Boolean) tableModel.getValueAt(row, 5);
+        question.setActive(isActive != null ? isActive : false);
         return question;
     }
     
@@ -148,15 +148,28 @@ public class QuestionsTable extends JPanel {
         return text.substring(0, maxLength - 3) + "...";
     }
     
-    private String formatCreatedAt(String createdAt) {
-        if (createdAt == null) return "";
-        // Simple format - you can improve this
-        if (createdAt.length() >= 16) {
-            return createdAt.substring(0, 16);
+    private String formatDate(String dateString) {
+        if (dateString == null || dateString.isBlank()) {
+            return "N/A";
         }
-        return createdAt;
+
+        try {
+            dateString = dateString.replace("T", " ");
+
+            // cắt milliseconds nếu có
+            if (dateString.contains(".")) {
+                dateString = dateString.substring(0, dateString.indexOf("."));
+            }
+
+            LocalDateTime dateTime =
+                    LocalDateTime.parse(dateString, INPUT_FORMATTER);
+
+            return dateTime.format(OUTPUT_FORMATTER);
+        } catch (Exception e) {
+            return dateString;
+        }
     }
-    
+
     public void setSelectionListener(QuestionSelectionListener listener) {
         this.selectionListener = listener;
     }

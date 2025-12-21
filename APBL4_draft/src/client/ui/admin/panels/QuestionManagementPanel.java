@@ -7,20 +7,16 @@ import client.ui.admin.dialogs.EditQuestionDialog;
 import client.ui.admin.dialogs.QuestionPreviewDialog;
 import model.Question;
 import model.Subject;
+import model.User;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import java.util.ArrayList;
 
-/**
- * Question Management Panel - Main panel for managing questions
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 04:06:50 UTC
- */
-public class QuestionManagementPanel extends JPanel implements QuestionController.QuestionListener {
+public class QuestionManagementPanel extends JPanel implements QuestionsTable.QuestionSelectionListener {
     
     private QuestionController questionController;
     private QuestionsTable questionsTable;
@@ -40,49 +36,15 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
     
     public QuestionManagementPanel(QuestionController questionController) {
         this.questionController = questionController;
-        this.questionController.setQuestionListener(this);
         
-        initializeUI();
-        setupEventHandlers();
-        loadInitialData();
+        initUI();
+        loadQuestions();
     }
     
-    private void initializeUI() {
+    private void initUI() {
         setLayout(new BorderLayout());
         
-        // Top panel with search and filters
-        JPanel topPanel = createTopPanel();
-        add(topPanel, BorderLayout.NORTH);
         
-        // Center panel with table
-        questionsTable = new QuestionsTable();
-        questionsTable.setSelectionListener(new QuestionsTable.QuestionSelectionListener() {
-            @Override
-            public void onQuestionSelected(Question question) {
-                updateButtonStates(true);
-            }
-            
-            @Override
-            public void onQuestionDeselected() {
-                updateButtonStates(false);
-            }
-            
-            @Override
-            public void onQuestionDoubleClicked(Question question) {
-                editSelectedQuestion();
-            }
-        });
-        add(questionsTable, BorderLayout.CENTER);
-        
-        // Bottom panel with status
-        JPanel bottomPanel = createBottomPanel();
-        add(bottomPanel, BorderLayout.SOUTH);
-        
-        // Initial button states
-        updateButtonStates(false);
-    }
-    
-    private JPanel createTopPanel() {
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
@@ -117,6 +79,8 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         deleteButton = new JButton("Delete Question");
         previewButton = new JButton("Preview");
         refreshButton = new JButton("Refresh");
+        deleteButton.setEnabled(false);
+        deleteButton.setForeground(Color.RED);
         
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
@@ -132,37 +96,123 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         topPanel.add(filtersAndSearch, BorderLayout.CENTER);
         topPanel.add(buttonPanel, BorderLayout.EAST);
         
-        return topPanel;
-    }
-    
-    private JPanel createBottomPanel() {
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        
+        add(topPanel, BorderLayout.NORTH);
+        
+        // Center panel with table
+        questionsTable = new QuestionsTable();
+        questionsTable.setSelectionListener(this);
+  
+        add(questionsTable, BorderLayout.CENTER);
+        
         statusLabel = new JLabel("Ready");
-        bottomPanel.add(statusLabel);
-        return bottomPanel;
-    }
-    
-    private void setupEventHandlers() {
-        // Search field Enter key
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        add(statusLabel, BorderLayout.SOUTH);
+        
+        
         searchField.addActionListener(e -> performSearch());
         
         // Buttons
-        addButton.addActionListener(e -> addNewQuestion());
-        editButton.addActionListener(e -> editSelectedQuestion());
-        deleteButton.addActionListener(e -> deleteSelectedQuestion());
+        addButton.addActionListener(e -> addQuestion());
+        editButton.addActionListener(e -> editQuestion());
+        deleteButton.addActionListener(e -> deleteQuestion());
         previewButton.addActionListener(e -> previewSelectedQuestion());
-        refreshButton.addActionListener(e -> refreshQuestions());
+        refreshButton.addActionListener(e -> loadQuestions());
+        
+        loadInitialData();
     }
-    
+//    ADD: Method để load subjects
     private void loadInitialData() {
-        // Load subjects first
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Loading subjects...");
-            questionController.getAllSubjects();
+            subjects = questionController.getAllSubjects();
+            
+            if (subjects != null && !subjects.isEmpty()) {
+                // Update subject filter combobox
+                subjectFilterComboBox.removeAllItems();
+                subjectFilterComboBox.addItem(null); // "All subjects" option
+                for (Subject subject : subjects) {
+                    subjectFilterComboBox.addItem(subject);
+                }
+                statusLabel.setText("Subjects loaded. Loading questions...");
+                loadQuestions();
+            } else {
+                statusLabel.setText("Failed to load subjects");
+                JOptionPane.showMessageDialog(this, 
+                    "Failed to load subjects. Some features may not work.", 
+                    "Warning", JOptionPane.WARNING_MESSAGE);
+            }
         });
     }
+ private void loadQuestions() {
+        statusLabel.setText("Loading questions...");
+        
+        List<Question> questions = questionController.getAllQuestions();
+        
+        if (questions != null) {
+            // ✅ FIX: Lưu vào currentQuestions
+            this.currentQuestions = questions;
+            questionsTable.setQuestions(questions);
+            statusLabel.setText("Loaded " + questions.size() + " questions");
+        } else {
+            statusLabel.setText("Failed to load questions");
+            currentQuestions = new ArrayList<>();
+            questionsTable.setQuestions(currentQuestions);
+        }
+    }
+ private void applyFilters() {
+	    if (currentQuestions == null) {
+	        statusLabel.setText("No questions loaded");
+	        return;
+	    }
+	    
+	    Subject selectedSubject = (Subject) subjectFilterComboBox.getSelectedItem();
+	    String selectedDifficulty = (String) difficultyFilterComboBox.getSelectedItem();
+	    
+	    List<Question> filteredQuestions = currentQuestions.stream()
+	        .filter(q -> selectedSubject == null || q.getSubjectId() == selectedSubject.getSubjectId())
+	        .filter(q -> "All".equals(selectedDifficulty) || selectedDifficulty.equals(q.getDifficulty()))
+	        .collect(java.util.stream.Collectors.toList());
+	    
+	    questionsTable.setQuestions(filteredQuestions);
+	    statusLabel.setText("Showing " + filteredQuestions.size() + " of " + currentQuestions.size() + " questions");
+	}
+ private void performSearch() {
+	    String keyword = searchField.getText().trim();
+	    statusLabel.setText("Searching questions...");
+	    
+	    List<Question> searchResults = questionController.searchQuestions(keyword);
+	    
+	    if (searchResults != null) {
+	        currentQuestions = searchResults;  // ✅ Update currentQuestions
+	        questionsTable.setQuestions(searchResults);
+	        statusLabel.setText("Found " + searchResults.size() + " questions");
+	    } else {
+	        statusLabel.setText("Search failed");
+	    }
+	}
+    @Override
+    public void onQuestionSelected(Question question) {
+        editButton.setEnabled(true);
+        deleteButton.setEnabled(question.isActive());
+        previewButton.setEnabled(true);
+        
+    }
     
-    private void addNewQuestion() {
+    @Override
+    public void onQuestionDeselected() {
+        editButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        previewButton.setEnabled(false);
+    }
+    
+    @Override
+    public void onQuestionDoubleClicked(Question question) {
+        // Double click = edit user
+        editQuestion();
+    }
+    
+    private void addQuestion() {
         if (subjects == null || subjects.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No subjects available. Please add subjects first.", 
                                         "No Subjects", JOptionPane.WARNING_MESSAGE);
@@ -175,11 +225,14 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         if (dialog.isConfirmed()) {
             Question newQuestion = dialog.getQuestion();
             statusLabel.setText("Creating question...");
-            questionController.createQuestion(newQuestion);
+            if(questionController.createQuestion(newQuestion)) {
+            	loadQuestions();
+            }
+            
         }
     }
     
-    private void editSelectedQuestion() {
+    private void editQuestion() {
         Question selectedQuestion = getFullSelectedQuestion();
         if (selectedQuestion == null) {
             JOptionPane.showMessageDialog(this, "Please select a question to edit.", 
@@ -200,11 +253,13 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         if (dialog.isConfirmed()) {
             Question updatedQuestion = dialog.getQuestion();
             statusLabel.setText("Updating question...");
-            questionController.updateQuestion(updatedQuestion);
+            if(questionController.updateQuestion(updatedQuestion)) {
+            	loadQuestions();
+            }
         }
     }
     
-    private void deleteSelectedQuestion() {
+    private void deleteQuestion() {
         Question selectedQuestion = getFullSelectedQuestion();
         if (selectedQuestion == null) {
             JOptionPane.showMessageDialog(this, "Please select a question to delete.", 
@@ -213,7 +268,9 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         }
         
         statusLabel.setText("Deleting question...");
-        questionController.deleteQuestion(selectedQuestion.getQuestionId(), selectedQuestion.getQuestionText());
+        if(questionController.deleteQuestion(selectedQuestion.getQuestionId(), selectedQuestion.getQuestionText())) {
+        	loadQuestions();
+        }
     }
     
     private void previewSelectedQuestion() {
@@ -229,31 +286,6 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
         dialog.setVisible(true);
     }
     
-    private void refreshQuestions() {
-        statusLabel.setText("Refreshing questions...");
-        questionController.getAllQuestions();
-    }
-    
-    private void performSearch() {
-        String keyword = searchField.getText().trim();
-        statusLabel.setText("Searching questions...");
-        questionController.searchQuestions(keyword);
-    }
-    
-    private void applyFilters() {
-        if (currentQuestions == null) return;
-        
-        Subject selectedSubject = (Subject) subjectFilterComboBox.getSelectedItem();
-        String selectedDifficulty = (String) difficultyFilterComboBox.getSelectedItem();
-        
-        List<Question> filteredQuestions = currentQuestions.stream()
-            .filter(q -> selectedSubject == null || q.getSubjectId() == selectedSubject.getSubjectId())
-            .filter(q -> "All".equals(selectedDifficulty) || selectedDifficulty.equals(q.getDifficulty()))
-            .collect(java.util.stream.Collectors.toList());
-        
-        questionsTable.setQuestions(filteredQuestions);
-        updateStatusLabel(filteredQuestions.size(), currentQuestions.size());
-    }
     
     private Question getFullSelectedQuestion() {
         Question tableQuestion = questionsTable.getSelectedQuestion();
@@ -268,81 +300,6 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
             .orElse(null);
     }
     
-    private void updateButtonStates(boolean hasSelection) {
-        editButton.setEnabled(hasSelection);
-        deleteButton.setEnabled(hasSelection);
-        previewButton.setEnabled(hasSelection);
-    }
-    
-    private void updateStatusLabel(int displayed, int total) {
-        if (displayed == total) {
-            statusLabel.setText("Showing " + total + " questions");
-        } else {
-            statusLabel.setText("Showing " + displayed + " of " + total + " questions");
-        }
-    }
-    
-    // QuestionController.QuestionListener implementation
-    @Override
-    public void onQuestionsLoaded(List<Question> questions) {
-        SwingUtilities.invokeLater(() -> {
-            this.currentQuestions = questions;
-            questionsTable.setQuestions(questions);
-            updateStatusLabel(questions.size(), questions.size());
-            statusLabel.setText("Questions loaded successfully");
-        });
-    }
-    
-    @Override
-    public void onQuestionCreated(Question question) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Question created successfully");
-            refreshQuestions(); // Reload to get updated list
-        });
-    }
-    
-    @Override
-    public void onQuestionUpdated(Question question) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Question updated successfully");
-            refreshQuestions(); // Reload to get updated list
-        });
-    }
-    
-    @Override
-    public void onQuestionDeleted(int questionId) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Question deleted successfully");
-            refreshQuestions(); // Reload to get updated list
-        });
-    }
-    
-    @Override
-    public void onSubjectsLoaded(List<Subject> subjects) {
-        SwingUtilities.invokeLater(() -> {
-            this.subjects = subjects;
-            
-            // Update subject filter combobox
-            subjectFilterComboBox.removeAllItems();
-            subjectFilterComboBox.addItem(null); // "All subjects" option
-            for (Subject subject : subjects) {
-                subjectFilterComboBox.addItem(subject);
-            }
-            
-            statusLabel.setText("Subjects loaded successfully");
-            
-            // Now load questions
-            questionController.getAllQuestions();
-        });
-    }
-    
-    @Override
-    public void onError(String message) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Error: " + message);
-            JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-        });
-    }
     
     /**
      * Custom renderer for Subject filter ComboBox
@@ -363,4 +320,5 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
             return this;
         }
     }
+
 }

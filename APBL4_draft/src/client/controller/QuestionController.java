@@ -10,15 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Question Controller - Client-side controller for question operations
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 04:02:31 UTC
- */
 public class QuestionController extends BaseController {
     
-    private QuestionListener listener;
+//    private QuestionListener listener;
     
     public QuestionController(NetworkManager networkManager) {
         super(networkManager);
@@ -40,17 +34,6 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 logAction("createQuestion", "Question created successfully");
                 showSuccessMessage("Success", "Question created successfully!");
-                
-                if (listener != null) {
-                    // Parse created question from response data
-                    String[] parts = response.getData().split("\\|", 2);
-                    if (parts.length >= 2) {
-                        Question createdQuestion = JsonUtil.fromJson(parts[1], Question.class);
-                        if (createdQuestion != null) {
-                            listener.onQuestionCreated(createdQuestion);
-                        }
-                    }
-                }
                 return true;
             } else {
                 handleServerError(response.getMessage());
@@ -79,17 +62,6 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 logAction("updateQuestion", "Question updated successfully");
                 showSuccessMessage("Success", "Question updated successfully!");
-                
-                if (listener != null) {
-                    // Parse updated question from response data
-                    String[] parts = response.getData().split("\\|", 2);
-                    if (parts.length >= 2) {
-                        Question updatedQuestion = JsonUtil.fromJson(parts[1], Question.class);
-                        if (updatedQuestion != null) {
-                            listener.onQuestionUpdated(updatedQuestion);
-                        }
-                    }
-                }
                 return true;
             } else {
                 handleServerError(response.getMessage());
@@ -131,9 +103,6 @@ public class QuestionController extends BaseController {
                 logAction("deleteQuestion", "Question deleted successfully");
                 showSuccessMessage("Success", "Question deleted successfully!");
                 
-                if (listener != null) {
-                    listener.onQuestionDeleted(questionId);
-                }
                 return true;
             } else {
                 handleServerError(response.getMessage());
@@ -162,10 +131,7 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 List<Question> questions = JsonUtil.fromJsontoList(response.getData(), Question.class);
                 logAction("getAllQuestions", "Retrieved " + (questions != null ? questions.size() : 0) + " questions");
-                
-                if (listener != null && questions != null) {
-                    listener.onQuestionsLoaded(questions);
-                }
+
                 return questions;
             } else {
                 handleServerError(response.getMessage());
@@ -197,10 +163,6 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 List<Question> questions = JsonUtil.fromJsontoList(response.getData(), Question.class);
                 logAction("searchQuestions", "Found " + (questions != null ? questions.size() : 0) + " questions");
-                
-                if (listener != null && questions != null) {
-                    listener.onQuestionsLoaded(questions);
-                }
                 return questions;
             } else {
                 handleServerError(response.getMessage());
@@ -232,10 +194,7 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 List<Question> questions = JsonUtil.fromJsontoList(response.getData(), Question.class);
                 logAction("getQuestionsBySubject", "Retrieved " + (questions != null ? questions.size() : 0) + " questions for subject");
-                
-                if (listener != null && questions != null) {
-                    listener.onQuestionsLoaded(questions);
-                }
+
                 return questions;
             } else {
                 handleServerError(response.getMessage());
@@ -268,9 +227,6 @@ public class QuestionController extends BaseController {
                 List<Question> questions = JsonUtil.fromJsontoList(response.getData(), Question.class);
                 logAction("getQuestionsByDifficulty", "Retrieved " + (questions != null ? questions.size() : 0) + " " + difficulty + " questions");
                 
-                if (listener != null && questions != null) {
-                    listener.onQuestionsLoaded(questions);
-                }
                 return questions;
             } else {
                 handleServerError(response.getMessage());
@@ -299,10 +255,6 @@ public class QuestionController extends BaseController {
             if (response.isSuccess()) {
                 List<Subject> subjects = JsonUtil.fromJsontoList(response.getData(), Subject.class);
                 logAction("getAllSubjects", "Retrieved " + (subjects != null ? subjects.size() : 0) + " subjects");
-                
-                if (listener != null && subjects != null) {
-                    listener.onSubjectsLoaded(subjects);
-                }
                 return subjects;
             } else {
                 handleServerError(response.getMessage());
@@ -314,23 +266,5 @@ public class QuestionController extends BaseController {
             return null;
         }
     }
-    
-    /**
-     * Set question listener
-     */
-    public void setQuestionListener(QuestionListener listener) {
-        this.listener = listener;
-    }
-    
-    /**
-     * Question Listener interface
-     */
-    public interface QuestionListener {
-        void onQuestionsLoaded(List<Question> questions);
-        void onQuestionCreated(Question question);
-        void onQuestionUpdated(Question question);
-        void onQuestionDeleted(int questionId);
-        void onSubjectsLoaded(List<Subject> subjects);
-        void onError(String message);
-    }
+
 }
