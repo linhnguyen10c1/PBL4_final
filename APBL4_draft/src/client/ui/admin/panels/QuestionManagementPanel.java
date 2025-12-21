@@ -14,12 +14,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 
-/**
- * Question Management Panel - Main panel for managing questions
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 04:06:50 UTC
- */
 public class QuestionManagementPanel extends JPanel implements QuestionController.QuestionListener {
     
     private QuestionController questionController;
@@ -155,7 +149,6 @@ public class QuestionManagementPanel extends JPanel implements QuestionControlle
     }
     
     private void loadInitialData() {
-        // Load subjects first
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Loading subjects...");
             questionController.getAllSubjects();

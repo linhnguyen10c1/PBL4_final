@@ -91,6 +91,7 @@ public class Question {
                 ", correctAnswer='" + correctAnswer + '\'' +
                 ", difficulty='" + difficulty + '\'' +
                 ", isActive=" + isActive +
+                ", createdAt='" + createdAt + '\'' +
                 '}';
     }
 }
