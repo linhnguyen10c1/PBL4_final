@@ -38,7 +38,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     // Panels
     private AvailableExamsPanel availableExamsPanel;
     private ExamInterfacePanel examInterfacePanel;
-    private ExamResultsPanel examResultsPanel;
     private StudentProfilePanel profilePanel;
     
     // Current state
@@ -103,10 +102,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         
         // Exam Interface Tab (initially hidden)
         examInterfacePanel = new ExamInterfacePanel(this, examController);
-        
-        // Results Tab
-        examResultsPanel = new ExamResultsPanel(this, examController);
-        tabbedPane.addTab("📊 My Results", examResultsPanel);
         
         // Profile Tab
         profilePanel = new StudentProfilePanel(this, loginController. getCurrentUser());
@@ -325,28 +320,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
         updateStatus("Answer saved");
     }
     
-    // ✅ FIX: Đã xóa method onNavigateToQuestion() - method này gây vòng lặp vô hạn
-    // Không cần implement nữa vì đã xóa khỏi interface
-    
-    @Override
-    public void onViewResultsRequested() {
-        tabbedPane.setSelectedComponent(examResultsPanel);
-        examResultsPanel. loadResults();
-    }
-    
-    @Override
-    public void onRefreshResultsRequested() {
-        updateStatus("Refreshing exam results...");
-        examController.getExamResults();
-    }
-    
-    @Override
-    public void onResultDetailRequested(ExamResult result) {
-        client.ui.student.dialogs.ExamResultDialog dialog = 
-            new client. ui.student.dialogs.ExamResultDialog(this, result);
-        dialog.setVisible(true);
-    }
-    
     @Override
     public void updateStatus(String message) {
         updateStatus(message, false);
@@ -408,22 +381,6 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             
             // Show result
             updateStatus("Exam submitted successfully.  Score: " + String.format("%.1f%%", result.getPercentage()));
-            
-            // Show result dialog
-            onResultDetailRequested(result);
-            
-            // Switch to results tab
-            onViewResultsRequested();
-        });
-    }
-    
-    @Override
-    public void onExamResultsLoaded(List<ExamResult> results) {
-        SwingUtilities. invokeLater(() -> {
-            updateStatus("Loaded " + results.size() + " exam results");
-            if (examResultsPanel != null) {
-                examResultsPanel.setExamResults(results);
-            }
         });
     }
     
