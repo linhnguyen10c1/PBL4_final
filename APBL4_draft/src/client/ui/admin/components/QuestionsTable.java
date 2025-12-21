@@ -137,6 +137,8 @@ public class QuestionsTable extends JPanel {
         Question question = new Question();
         question.setQuestionId((Integer) tableModel.getValueAt(row, 0));
         question.setSubjectName((String) tableModel.getValueAt(row, 1));
+        Boolean isActive = (Boolean) tableModel.getValueAt(row, 5);
+        question.setActive(isActive != null ? isActive : false);
         return question;
     }
     
