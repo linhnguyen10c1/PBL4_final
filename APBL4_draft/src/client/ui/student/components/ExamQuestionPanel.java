@@ -35,10 +35,6 @@ public class ExamQuestionPanel extends JPanel {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createTitledBorder("Question"));
         
-        // Header with question info
-        JPanel headerPanel = createHeaderPanel();
-        add(headerPanel, BorderLayout.NORTH);
-        
         // Main content
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         
@@ -53,7 +49,7 @@ public class ExamQuestionPanel extends JPanel {
         
         JScrollPane questionScrollPane = new JScrollPane(questionTextArea);
         questionScrollPane.setPreferredSize(new Dimension(0, 120));
-        questionScrollPane.setBorder(BorderFactory.createTitledBorder("Question Text"));
+        questionScrollPane.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         mainPanel.add(questionScrollPane, BorderLayout.NORTH);
         
         // Options panel
@@ -146,36 +142,10 @@ public class ExamQuestionPanel extends JPanel {
         
         if (question != null) {
             SwingUtilities.invokeLater(() -> {
-                // ✅ FIX #1: TẮT LISTENER TẠM THỜI để tránh trigger khi set answer
                 AnswerChangeListener tempListener = this.answerChangeListener;
                 this.answerChangeListener = null;
                 
                 try {
-                    // Update question info
-                    questionNumberLabel.setText("Question #" + question.getQuestionId());
-                    System.out.println("✅ [ExamQuestionPanel] Question number set: " + question.getQuestionId());
-                    
-                    // Update difficulty with styling
-                    String difficulty = question.getDifficulty();
-                    difficultyLabel.setText("Difficulty: " + difficulty);
-                    switch (difficulty) {
-                        case "EASY":
-                            difficultyLabel.setForeground(new Color(0, 150, 0));
-                            difficultyLabel.setText("Difficulty: 🟢 Easy");
-                            break;
-                        case "MEDIUM":
-                            difficultyLabel.setForeground(new Color(255, 140, 0));
-                            difficultyLabel.setText("Difficulty: 🟡 Medium");
-                            break;
-                        case "HARD":
-                            difficultyLabel.setForeground(Color.RED);
-                            difficultyLabel.setText("Difficulty: 🔴 Hard");
-                            break;
-                        default:
-                            difficultyLabel.setForeground(Color.BLACK);
-                            break;
-                    }
-                    
                     // Update question text
                     if (questionTextArea != null) {
                         questionTextArea.setText(question.getQuestionText());
@@ -269,8 +239,6 @@ public class ExamQuestionPanel extends JPanel {
     }
     
     private void clearQuestion() {
-        questionNumberLabel.setText("Question #");
-        difficultyLabel.setText("Difficulty: Unknown");
         difficultyLabel.setForeground(Color.BLACK);
         questionTextArea.setText("");
         optionA.setText("A. ");
