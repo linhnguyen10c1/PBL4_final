@@ -355,38 +355,6 @@ public class StudentExamController extends BaseController {
     }
     
     /**
-     * Get student exam results
-     */
-    public List<ExamResult> getExamResults() {
-        try {
-            logAction("getExamResults", "Fetching exam results");
-            
-            if (!validateSession()) {
-                return null;
-            }
-            
-            ResponseData response = sendRequest(Protocol.GET_STUDENT_EXAM_RESULTS);
-            
-            if (response.isSuccess()) {
-                List<ExamResult> results = JsonUtil.fromJsontoList(response.getData(), ExamResult.class);
-                logAction("getExamResults", "Retrieved " + (results != null ? results.size() : 0) + " exam results");
-                
-                if (listener != null && results != null) {
-                    listener.onExamResultsLoaded(results);
-                }
-                return results;
-            } else {
-                handleServerError(response.getMessage());
-                return null;
-            }
-            
-        } catch (Exception e) {
-            handleNetworkError(e);
-            return null;
-        }
-    }
-    
-    /**
      * Set exam listener
      */
     public void setExamListener(ExamListener listener) {
@@ -402,7 +370,6 @@ public class StudentExamController extends BaseController {
         void onExamStarted(List<ExamAnswer> questions);
         void onAnswerSaved(int questionId, String answer);
         void onExamSubmitted(ExamResult result);
-        void onExamResultsLoaded(List<ExamResult> results);
         void onExamTimeExpired();
         void onError(String message);
     }

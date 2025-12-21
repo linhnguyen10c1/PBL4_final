@@ -26,12 +26,6 @@ public interface StudentDashboardCallbacks {
     // Answer management callbacks
     void onAnswerChanged(int questionId, String answer);
     void onAnswerSaved(int questionId, String answer);
-    // ✅ FIX: Đã xóa - void onNavigateToQuestion(int questionIndex);
-    
-    // Results callbacks
-    void onViewResultsRequested();
-    void onRefreshResultsRequested();
-    void onResultDetailRequested(ExamResult result);
     
     // Status updates
     void updateStatus(String message);
