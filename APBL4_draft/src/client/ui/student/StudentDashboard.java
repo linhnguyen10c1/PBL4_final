@@ -379,6 +379,8 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             // Re-enable other tabs
             setTabsEnabled(true);
             
+            tabbedPane.setSelectedIndex(0);
+            
             // Show result
             updateStatus("Exam submitted successfully.  Score: " + String.format("%.1f%%", result.getPercentage()));
         });
