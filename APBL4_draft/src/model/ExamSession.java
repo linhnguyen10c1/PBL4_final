@@ -87,20 +87,6 @@ public class ExamSession {
     /**
      * Calculate remaining time in minutes
      */
-//    public int getRemainingTimeMinutes() {
-//        if (examRoom == null || startTime == null) return 0;
-//        
-//        long startMillis = startTime.getTime();
-//        long currentMillis = System.currentTimeMillis();
-//        long elapsedMillis = currentMillis - startMillis;
-//        int elapsedMinutes = (int) (elapsedMillis / (1000 * 60));
-//        
-//        return Math.max(0, examRoom.getDurationMinutes() - elapsedMinutes);
-//    }
-    
-    /**
-     * Calculate remaining time in minutes
-     */
     public int getRemainingTimeMinutes() {
         if (examRoom == null) {
             System.err.println("❌ getRemainingTimeMinutes: examRoom is null");

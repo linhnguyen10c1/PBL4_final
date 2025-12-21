@@ -11,12 +11,6 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.UUID;
 
-/**
- * ExamSession DAO - Data access for exam sessions
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 15:54:30 UTC
- */
 public class ExamSessionDAO extends BaseDAO {
     
     /**
@@ -228,33 +222,6 @@ public class ExamSessionDAO extends BaseDAO {
     }
     
     /**
-     * Calculate session score
-     */
-//    private double calculateSessionScore(int sessionId) throws SQLException {
-//        String sql = """
-//            SELECT 
-//                COUNT(*) as total_questions,
-//                SUM(CASE WHEN eq.student_answer = q.correct_answer THEN 1 ELSE 0 END) as correct_answers
-//            FROM exam_questions eq
-//            JOIN questions q ON eq.question_id = q.question_id
-//            WHERE eq.session_id = ? AND eq.student_answer IS NOT NULL
-//            """;
-//        
-//        List<Map<String, Object>> results = executeQueryForList(sql, sessionId);
-//        if (!results.isEmpty()) {
-//            Map<String, Object> row = results.get(0);
-//            int totalQuestions = getIntValue(row, "total_questions", 0);
-//            int correctAnswers = getIntValue(row, "correct_answers", 0);
-//            
-//            if (totalQuestions > 0) {
-//                return (double) correctAnswers / totalQuestions * 100.0;
-//            }
-//        }
-//        
-//        return 0.0;
-//    }
-    
-    /**
      * Update correct answers flags
      */
     private void updateCorrectAnswers(int sessionId) throws SQLException {
@@ -272,8 +239,29 @@ public class ExamSessionDAO extends BaseDAO {
      */
     public ExamSession findByRoomAndStudent(int roomId, int studentId) throws SQLException {
         String sql = """
-            SELECT es.*, er.room_name, er.subject_id, s.subject_name, er.question_count,
-                   er.duration_minutes, er.total_score as max_score, u.full_name as student_name
+            SELECT 
+                es.session_id, 
+                es.room_id, 
+                es.student_id, 
+                es.session_token,
+                es.start_time, 
+                es.submit_time, 
+                es.total_score as session_score,
+                es.status, 
+                es.created_at,
+                er.room_name, 
+                er.room_password,
+                er.subject_id, 
+                s.subject_name, 
+                er.question_count,
+                er.duration_minutes, 
+                er.total_score as max_score,
+                er.start_time as room_start_time, 
+                er.end_time as room_end_time,
+                er.description,
+                er.is_active as room_active,
+                er.created_by,
+                u.full_name as student_name
             FROM exam_sessions es
             JOIN exam_rooms er ON es.room_id = er.room_id
             JOIN subjects s ON er.subject_id = s.subject_id
@@ -282,7 +270,7 @@ public class ExamSessionDAO extends BaseDAO {
             """;
         
         List<Map<String, Object>> results = executeQueryForList(sql, roomId, studentId);
-        if (!results.isEmpty()) {
+        if (! results.isEmpty()) {
             return mapToExamSession(results.get(0));
         }
         return null;
@@ -291,44 +279,41 @@ public class ExamSessionDAO extends BaseDAO {
     /**
      * Find session by session token
      */
-//    public ExamSession findByToken(String sessionToken) throws SQLException {
-//        String sql = """
-//            SELECT es.*, er.room_name, er.subject_id, s.subject_name, er.question_count,
-//                   er.duration_minutes, er.total_score as max_score, u.full_name as student_name
-//            FROM exam_sessions es
-//            JOIN exam_rooms er ON es.room_id = er.room_id
-//            JOIN subjects s ON er.subject_id = s.subject_id
-//            JOIN users u ON es.student_id = u.user_id
-//            WHERE es.session_token = ?
-//            """;
-//        
-//        List<Map<String, Object>> results = executeQueryForList(sql, sessionToken);
-//        if (!results.isEmpty()) {
-//            ExamSession session = mapToExamSession(results.get(0));
-//            // Load answers
-//            session.setAnswers(getSessionAnswers(session.getSessionId()));
-//            return session;
-//        }
-//        return null;
-//    }
-    
     public ExamSession findByToken(String sessionToken) throws SQLException {
         String sql = """
-            SELECT es.*, er.room_name, er.subject_id, s.subject_name, er.question_count,
-                   er.duration_minutes, er.total_score as max_score, u.full_name as student_name,
-                   er.room_password, er.start_time as room_start_time, er.end_time as room_end_time,
-                   er.description, er.is_active as room_active, er.created_by
+            SELECT 
+                es.session_id, 
+                es.room_id, 
+                es.student_id, 
+                es.session_token,
+                es.start_time, 
+                es.submit_time, 
+                es.total_score as session_score,
+                es.status, 
+                es.created_at,
+                er.room_name, 
+                er.room_password,
+                er.subject_id, 
+                s.subject_name, 
+                er.question_count,
+                er.duration_minutes, 
+                er.total_score as max_score,
+                er.start_time as room_start_time, 
+                er.end_time as room_end_time,
+                er.description,
+                er.is_active as room_active,
+                er.created_by,
+                u.full_name as student_name
             FROM exam_sessions es
             JOIN exam_rooms er ON es.room_id = er.room_id
             JOIN subjects s ON er.subject_id = s.subject_id
             JOIN users u ON es.student_id = u.user_id
-            WHERE es.session_token = ?
+            WHERE es.session_token = ? 
             """;
         
         List<Map<String, Object>> results = executeQueryForList(sql, sessionToken);
         if (!results.isEmpty()) {
             ExamSession session = mapToExamSession(results.get(0));
-            // Load answers
             session.setAnswers(getSessionAnswers(session.getSessionId()));
             return session;
         }
@@ -412,36 +397,6 @@ public class ExamSessionDAO extends BaseDAO {
     /**
      * Map database row to ExamSession
      */
-//    private ExamSession mapToExamSession(Map<String, Object> row) {
-//        ExamSession session = new ExamSession();
-//        session.setSessionId(getIntValue(row, "session_id", 0));
-//        session.setRoomId(getIntValue(row, "room_id", 0));
-//        session.setStudentId(getIntValue(row, "student_id", 0));
-//        session.setSessionToken(getStringValue(row, "session_token"));
-//        session.setStartTime((Timestamp) row.get("start_time"));
-//        session.setSubmitTime((Timestamp) row.get("submit_time"));
-//        session.setTotalScore(getDoubleValue(row, "total_score", 0.0));
-//        session.setStatus(getStringValue(row, "status"));
-//        session.setCreatedAt(safeToString(row.get("created_at")));
-//        session.setUpdatedAt(safeToString(row.get("updated_at")));
-//        session.setStudentName(getStringValue(row, "student_name"));
-//        
-//        // Set exam room info
-//        if (row.containsKey("room_name")) {
-//            ExamRoom room = new ExamRoom();
-//            room.setRoomId(getIntValue(row, "room_id", 0));
-//            room.setRoomName(getStringValue(row, "room_name"));
-//            room.setSubjectId(getIntValue(row, "subject_id", 0));
-//            room.setSubjectName(getStringValue(row, "subject_name"));
-//            room.setQuestionCount(getIntValue(row, "question_count", 0));
-//            room.setDurationMinutes(getIntValue(row, "duration_minutes", 0));
-//            room.setTotalScore(getDoubleValue(row, "max_score", 0.0));
-//            session.setExamRoom(room);
-//        }
-//        
-//        return session;
-//    }
- // ✅ SỬA mapToExamSession để tạo ExamRoom đầy đủ:
     private ExamSession mapToExamSession(Map<String, Object> row) {
         ExamSession session = new ExamSession();
         session.setSessionId(getIntValue(row, "session_id", 0));
@@ -449,17 +404,33 @@ public class ExamSessionDAO extends BaseDAO {
         session.setStudentId(getIntValue(row, "student_id", 0));
         session.setSessionToken(getStringValue(row, "session_token"));
         
-        // ✅ FIX: Safe timestamp conversion
+        System.out.println("Keys in row: " + row.keySet());
+        // Safe timestamp conversion
         session.setStartTime(convertToTimestamp(row.get("start_time")));
         session.setSubmitTime(convertToTimestamp(row.get("submit_time")));
         
-        session.setTotalScore(getDoubleValue(row, "total_score", 0.0));
+        // Fallback đến 'total_score' cho các query cũ
+        Object sessionScoreObj = row.get("session_score");
+        if (sessionScoreObj != null) {
+            if (sessionScoreObj instanceof Number) {
+                session.setTotalScore(((Number) sessionScoreObj).doubleValue());
+            } else {
+                try {
+                    session.setTotalScore(Double.parseDouble(sessionScoreObj.toString()));
+                } catch (NumberFormatException e) {
+                    session.setTotalScore(0.0);
+                }
+            }
+        } else {
+            // Fallback for old queries
+            session.setTotalScore(getDoubleValue(row, "total_score", 0.0));
+        }
+        
         session.setStatus(getStringValue(row, "status"));
         session.setCreatedAt(safeToString(row.get("created_at")));
-        session.setUpdatedAt(safeToString(row.get("updated_at")));
         session.setStudentName(getStringValue(row, "student_name"));
         
-        // ✅ QUAN TRỌNG: Tạo ExamRoom đầy đủ
+        // Tạo ExamRoom đầy đủ
         if (row.containsKey("room_name")) {
             ExamRoom room = new ExamRoom();
             room.setRoomId(getIntValue(row, "room_id", 0));
@@ -469,12 +440,12 @@ public class ExamSessionDAO extends BaseDAO {
             room.setSubjectName(getStringValue(row, "subject_name"));
             room.setQuestionCount(getIntValue(row, "question_count", 0));
             room.setDurationMinutes(getIntValue(row, "duration_minutes", 0));
-            room.setTotalScore(getDoubleValue(row, "max_score", 0.0));
+            room.setTotalScore(getDoubleValue(row, "max_score", 100.0));
             room.setDescription(getStringValue(row, "description"));
             room.setActive(getBooleanValue(row, "room_active", true));
             room.setCreatedBy(getIntValue(row, "created_by", 0));
             
-            // ✅ THÊM: Set start_time và end_time
+            // Set start_time và end_time
             room.setStartTime(convertToTimestamp(row.get("room_start_time")));
             room.setEndTime(convertToTimestamp(row.get("room_end_time")));
             
@@ -483,43 +454,25 @@ public class ExamSessionDAO extends BaseDAO {
         
         return session;
     }
-
-    // ✅ THÊM method helper này vào ExamSessionDAO:
-//    private Timestamp convertToTimestamp(Object obj) {
-//        if (obj == null) {
-//            return null;
-//        }
-//        
-//        try {
-//            if (obj instanceof Timestamp) {
-//                return (Timestamp) obj;
-//            }
-//            
-//            if (obj instanceof java.time.LocalDateTime) {
-//                java.time.LocalDateTime ldt = (java.time.LocalDateTime) obj;
-//                return Timestamp.valueOf(ldt);
-//            }
-//            
-//            if (obj instanceof java.util.Date) {
-//                java.util.Date date = (java.util.Date) obj;
-//                return new Timestamp(date.getTime());
-//            }
-//            
-//            if (obj instanceof String) {
-//                // Parse string to timestamp
-//                java.time.LocalDateTime ldt = java.time.LocalDateTime.parse((String) obj);
-//                return Timestamp.valueOf(ldt);
-//            }
-//            
-//            System.err.println("⚠️ Unexpected timestamp type: " + obj.getClass().getName() + " = " + obj);
-//            return null;
-//            
-//        } catch (Exception e) {
-//            System.err.println("❌ Error converting to Timestamp: " + obj + " - " + e.getMessage());
-//            return null;
-//        }
-//    }
-//    
+    
+    /**
+     * Helper method to get Double value or null
+     */
+    private Double getDoubleValueOrNull(Map<String, Object> row, String key) {
+        if (! row.containsKey(key) || row.get(key) == null) {
+            return null;
+        }
+        Object value = row.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+    
     private Timestamp convertToTimestamp(Object obj) {
         if (obj == null) {
             return null;
@@ -577,6 +530,7 @@ public class ExamSessionDAO extends BaseDAO {
             return null;
         }
     }
+    
     /**
      * Map database row to ExamAnswer
      */

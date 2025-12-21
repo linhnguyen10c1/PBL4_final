@@ -7,12 +7,6 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Exam Service - Business logic for exam operations
- * 
- * @author linhnguyen10c1
- * @since 2025-10-29 15:56:30 UTC
- */
 public class ExamService {
     
     private final ExamSessionDAO examSessionDAO;
@@ -32,44 +26,16 @@ public class ExamService {
         this.userDAO = new UserDAO();
     }
     
-    
-    /**
-     * Get available exam rooms for student
-     */
-//    public ServiceResult<List<ExamRoom>> getAvailableExamRooms(int studentId) {
-//        try {
-//            System.out.println("🎓 [ExamService] Getting available exam rooms for student: " + studentId);
-//            
-//            // Get all active exam rooms where student is allowed
-//            List<ExamRoom> allRooms = examRoomDAO.findAll();
-//            Timestamp now = new Timestamp(System.currentTimeMillis());
-//            
-//            List<ExamRoom> availableRooms = allRooms.stream()
-//                .filter(room -> room.isActive())
-//                .filter(room -> room.getAllowedStudentIds().contains(studentId))
-//                .filter(room -> !isExamFinished(room, now))
-//                .filter(room -> !hasCompletedExam(studentId, room.getRoomId()))
-//                .collect(Collectors.toList());
-//            
-//            System.out.println("✅ [ExamService] Found " + availableRooms.size() + " available exam rooms");
-//            return ServiceResult.success("Available exam rooms retrieved successfully", availableRooms);
-//            
-//        } catch (Exception e) {
-//            System.err.println("❌ [ExamService] Error getting available exam rooms: " + e.getMessage());
-//            e.printStackTrace();
-//            return ServiceResult.error("Failed to retrieve available exam rooms: " + e.getMessage());
-//        }
-//    }
-    /**
-     * Get available exam rooms for student - ADD MORE DEBUG
-     */
+	/**
+	 * Get available exam rooms for student - UPDATED:  Include submitted rooms with score
+	 */
     public ServiceResult<List<ExamRoom>> getAvailableExamRooms(int studentId) {
         try {
             System.out.println("🎓 [ExamService] Getting available exam rooms for student: " + studentId);
             
             // Get all active exam rooms where student is allowed
             List<ExamRoom> allRooms = examRoomDAO.findAll();
-            System.out.println("🔍 [ExamService] Found " + allRooms.size() + " total rooms");
+            System.out.println("🔍 [ExamService] Found " + allRooms. size() + " total rooms");
             
             Timestamp now = new Timestamp(System.currentTimeMillis());
             System.out.println("🔍 [ExamService] Current time: " + now);
@@ -77,22 +43,23 @@ public class ExamService {
             List<ExamRoom> availableRooms = new ArrayList<>();
             
             for (ExamRoom room : allRooms) {
-                System.out.println("🔍 [ExamService] Checking room " + room.getRoomId() + ": " + room.getRoomName());
-                System.out.println("  - Active: " + room.isActive());
+                System.out.println("🔍 [ExamService] Checking room " + room.getRoomId() + ": " + room. getRoomName());
+                System.out.println("  - Active: " + room. isActive());
                 System.out.println("  - Allowed students: " + room.getAllowedStudentIds());
-                System.out.println("  - Student " + studentId + " allowed: " + room.getAllowedStudentIds().contains(studentId));
+                System.out.println("  - Student " + studentId + " allowed: " + room. getAllowedStudentIds().contains(studentId));
                 
                 boolean isActive = room.isActive();
                 boolean isAllowed = room.getAllowedStudentIds().contains(studentId);
                 boolean notFinished = !isExamFinished(room, now);
-                boolean notCompleted = !hasCompletedExam(studentId, room.getRoomId());
                 
                 System.out.println("  - Filters: active=" + isActive + ", allowed=" + isAllowed + 
-                                 ", notFinished=" + notFinished + ", notCompleted=" + notCompleted);
+                                 ", notFinished=" + notFinished);
                 
-                if (isActive && isAllowed && notFinished && notCompleted) {
+                if (isActive && isAllowed && notFinished) {
+                    attachStudentSubmissionInfo(room, studentId);
+                    
                     availableRooms.add(room);
-                    System.out.println("  ✅ Room added to available list");
+                    System.out.println("  ✅ Room added to available list (submitted=" + room.hasStudentSubmitted() + ")");
                 } else {
                     System.out.println("  ❌ Room filtered out");
                 }
@@ -104,7 +71,39 @@ public class ExamService {
         } catch (Exception e) {
             System.err.println("❌ [ExamService] Error getting available exam rooms: " + e.getMessage());
             e.printStackTrace();
-            return ServiceResult.error("Failed to retrieve available exam rooms: " + e.getMessage());
+            return ServiceResult.error("Failed to retrieve available exam rooms:  " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Attach student's submission info to ExamRoom
+     */
+    private void attachStudentSubmissionInfo(ExamRoom room, int studentId) {
+        try {
+            ExamSession session = examSessionDAO.findByRoomAndStudent(room. getRoomId(), studentId);
+            
+            if (session != null && session.isSubmitted()) {
+                // Student đã nộp bài
+                room.setStudentSubmissionStatus(session.getStatus()); // "SUBMITTED" hoặc "AUTO_SUBMITTED"
+                room.setStudentScore(session. getTotalScore());
+                room.setMaxScoreForStudent(room.getTotalScore());
+                
+                System.out.println("  📝 Student submission found: score=" + session.getTotalScore() + 
+                                 "/" + room.getTotalScore() + ", status=" + session. getStatus());
+            } else {
+                // Student chưa nộp bài
+                room.setStudentSubmissionStatus("NOT_SUBMITTED");
+                room.setStudentScore(null);
+                room.setMaxScoreForStudent(null);
+                
+                System.out. println("  📝 No submission found for student");
+            }
+        } catch (Exception e) {
+            // Nếu có lỗi, default là chưa nộp
+            System.err. println("  ⚠️ Error checking submission: " + e. getMessage());
+            room.setStudentSubmissionStatus("NOT_SUBMITTED");
+            room.setStudentScore(null);
+            room.setMaxScoreForStudent(null);
         }
     }
     
@@ -442,7 +441,6 @@ public class ExamService {
      */
     private boolean isExamAccessible(ExamRoom room, Timestamp now) {
         // If no start/end time set, exam is always accessible
-    	 // If no start/end time set, exam is always accessible
         if (room.getStartTime() == null && room.getEndTime() == null) {
             return true;
         }
@@ -591,26 +589,27 @@ public class ExamService {
 	    return result;
 	}
 
-/**
- * Calculate grade based on percentage
- */
-private String calculateGrade(double percentage) {
-    if (percentage >= 90) {
-        return "A+";
-    } else if (percentage >= 85) {
-        return "A";
-    } else if (percentage >= 80) {
-        return "B+";
-    } else if (percentage >= 70) {
-        return "B";
-    } else if (percentage >= 60) {
-        return "C";
-    } else if (percentage >= 50) {
-        return "D";
-    } else {
-        return "F";
-    }
-}
+	/**
+	 * Calculate grade based on percentage
+	 */
+	private String calculateGrade(double percentage) {
+	    if (percentage >= 90) {
+	        return "A+";
+	    } else if (percentage >= 85) {
+	        return "A";
+	    } else if (percentage >= 80) {
+	        return "B+";
+	    } else if (percentage >= 70) {
+	        return "B";
+	    } else if (percentage >= 60) {
+	        return "C";
+	    } else if (percentage >= 50) {
+	        return "D";
+	    } else {
+	        return "F";
+	    }
+	}
+	
     /**
      * Validation Result inner class
      */

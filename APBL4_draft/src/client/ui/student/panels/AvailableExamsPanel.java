@@ -52,8 +52,14 @@ public class AvailableExamsPanel extends JPanel {
         examRoomsTable.setSelectionListener(new ExamRoomsTable.ExamRoomSelectionListener() {
             @Override
             public void onExamRoomSelected(ExamRoom examRoom) {
-                joinButton.setEnabled(true);
-                updateStatus("Selected: " + examRoom.getRoomName());
+                if (examRoom.hasStudentSubmitted()) {
+                    joinButton. setEnabled(false);
+                    updateStatus("Selected: " + examRoom.getRoomName() + 
+                               " (Already submitted - Score: " + examRoom.getStudentScoreDisplay() + ")");
+                } else {
+                    joinButton.setEnabled(true);
+                    updateStatus("Selected: " + examRoom.getRoomName());
+                }
             }
             
             @Override
@@ -64,6 +70,9 @@ public class AvailableExamsPanel extends JPanel {
             
             @Override
             public void onExamRoomDoubleClicked(ExamRoom examRoom) {
+                if (examRoom.hasStudentSubmitted()) {
+                    return; // Không làm gì
+                }
                 joinSelectedExam();
             }
         });
@@ -182,6 +191,15 @@ public class AvailableExamsPanel extends JPanel {
             return;
         }
         
+        //Double-check nếu đã nộp bài
+        if (selectedRoom.hasStudentSubmitted()) {
+            JOptionPane.showMessageDialog(this,
+                "You have already submitted this exam.\nScore: " + selectedRoom.getStudentScoreDisplay(),
+                "Already Submitted",
+                JOptionPane. INFORMATION_MESSAGE);
+            return;
+        }
+        
         // Show password dialog
         ExamPasswordDialog passwordDialog = new ExamPasswordDialog(
             (JFrame) SwingUtilities.getWindowAncestor(this), 
@@ -189,11 +207,11 @@ public class AvailableExamsPanel extends JPanel {
         passwordDialog.setVisible(true);
         
         if (passwordDialog.isConfirmed()) {
-            String password = passwordDialog.getPassword();
-            updateStatus("Joining exam room: " + selectedRoom.getRoomName());
+            String password = passwordDialog. getPassword();
+            updateStatus("Joining exam room:  " + selectedRoom. getRoomName());
             
             // Join exam through controller
-            examController.joinExamRoom(selectedRoom.getRoomId(), password);
+            examController.joinExamRoom(selectedRoom. getRoomId(), password);
             
             if (callbacks != null) {
                 callbacks.onJoinExamRequested(selectedRoom);

@@ -168,4 +168,52 @@ public class ExamRoom {
                 ", isActive=" + isActive +
                 '}';
     }
+    // Các field này được server gắn vào khi trả về cho student cụ thể
+    private String studentSubmissionStatus;  // "NOT_SUBMITTED", "SUBMITTED", "AUTO_SUBMITTED"
+    private Double studentScore;             // Điểm của student (null nếu chưa nộp)
+    private Double maxScoreForStudent;       // Điểm tối đa
+    
+    // Getters and Setters for new fields
+    public String getStudentSubmissionStatus() { 
+        return studentSubmissionStatus; 
+    }
+    
+    public void setStudentSubmissionStatus(String studentSubmissionStatus) { 
+        this. studentSubmissionStatus = studentSubmissionStatus; 
+    }
+    
+    public Double getStudentScore() { 
+        return studentScore; 
+    }
+    
+    public void setStudentScore(Double studentScore) { 
+        this.studentScore = studentScore; 
+    }
+    
+    public Double getMaxScoreForStudent() { 
+        return maxScoreForStudent; 
+    }
+    
+    public void setMaxScoreForStudent(Double maxScoreForStudent) { 
+        this.maxScoreForStudent = maxScoreForStudent; 
+    }
+    
+    // Helper methods
+    /**
+     * Check if current student has submitted this exam
+     */
+    public boolean hasStudentSubmitted() {
+        return "SUBMITTED".equals(studentSubmissionStatus) || 
+               "AUTO_SUBMITTED". equals(studentSubmissionStatus);
+    }
+    
+    /**
+     * Get formatted score display:  "8.5/10.0" or "-"
+     */
+    public String getStudentScoreDisplay() {
+        if (! hasStudentSubmitted() || studentScore == null || maxScoreForStudent == null) {
+            return "-";
+        }
+        return String.format("%.1f/%.1f", studentScore, maxScoreForStudent);
+    }
 }
