@@ -49,6 +49,7 @@ public class QuestionsTable extends JPanel {
             public Class<?> getColumnClass(int column) {
                 switch (column) {
                     case 0: return Integer.class;
+                    case 5: return Boolean.class;
                     default: return String.class;
                 }
             }
@@ -117,7 +118,7 @@ public class QuestionsTable extends JPanel {
                 truncateText(question.getQuestionText(), 80),
                 question.getCorrectAnswer() + " - " + truncateText(question.getCorrectOptionText(), 30),
                 question.getDifficulty(),
-                question.isActive() ? "Active" : "Inactive",
+                question.isActive(),
                 formatDate(question.getCreatedAt())
             };
             tableModel.addRow(rowData);

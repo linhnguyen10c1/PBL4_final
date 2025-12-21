@@ -143,7 +143,7 @@ public class QuestionService {
         try {
             System.out.println("📝 [QuestionService] Getting all questions");
             
-            List<Question> questions = questionDAO.findAll();
+            List<Question> questions = questionDAO.getAll();
             System.out.println("✅ [QuestionService] Retrieved " + questions.size() + " questions");
             
             return ServiceResult.success("Questions retrieved successfully", questions);

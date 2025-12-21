@@ -115,6 +115,23 @@ public class QuestionDAO extends BaseDAO {
         
         return questions;
     }
+    public List<Question> getAll() throws SQLException {
+        String sql = """
+            SELECT q.*, s.subject_name
+            FROM questions q
+            JOIN subjects s ON q.subject_id = s.subject_id
+            ORDER BY q.created_at DESC
+            """;
+        
+        List<Map<String, Object>> results = executeQueryForList(sql);
+        List<Question> questions = new ArrayList<>();
+        
+        for (Map<String, Object> row : results) {
+            questions.add(mapToQuestion(row));
+        }
+        
+        return questions;
+    }
     
     /**
      * Find questions by subject
