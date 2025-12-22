@@ -6,6 +6,9 @@ import model.User;
 import server.dao.ExamRoomDAO;
 import server.dao.SubjectDAO;
 import server.dao.UserDAO;
+
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import model.StudentExamStatus;
@@ -13,12 +16,6 @@ import model.ExamSession;
 import server.dao.ExamSessionDAO;
 import java.util.ArrayList;
 
-/**
- * ExamRoom Service - Business logic for exam room management
- * 
- * @author linhnguyen10c1
- * @since 2025-10-16 14:37:51 UTC
- */
 public class ExamRoomService {
     
     private final ExamRoomDAO examRoomDAO;
@@ -389,32 +386,47 @@ public class ExamRoomService {
         if (examRoom == null) {
             return new ValidationResult(false, "Exam room data is required");
         }
-        
         if (examRoom.getRoomName() == null || examRoom.getRoomName().trim().isEmpty()) {
             return new ValidationResult(false, "Room name is required");
         }
-        
         if (examRoom.getRoomName().length() > 100) {
             return new ValidationResult(false, "Room name cannot exceed 100 characters");
         }
-        
         if (examRoom.getSubjectId() <= 0) {
             return new ValidationResult(false, "Valid subject is required");
         }
-        
         if (examRoom.getQuestionCount() <= 0 || examRoom.getQuestionCount() > 100) {
             return new ValidationResult(false, "Question count must be between 1 and 100");
         }
-        
         if (examRoom.getTotalScore() <= 0 || examRoom.getTotalScore() > 1000) {
             return new ValidationResult(false, "Total score must be between 0.1 and 1000");
         }
-        
         if (examRoom.getDurationMinutes() <= 0 || examRoom.getDurationMinutes() > 300) {
             return new ValidationResult(false, "Duration must be between 1 and 300 minutes");
         }
-        
-        
+        try {
+            if (examRoomDAO.isRoomNameExists(examRoom.getRoomName())) {
+                return new ValidationResult(false, "Room name already exists! Please choose another.");
+            }
+        } catch (SQLException e) {
+            return new ValidationResult(false, "Cannot verify room name: " + e.getMessage());
+        }
+
+        // 💡 BỔ SUNG KIỂM TRA LOGIC START TIME & END TIME
+        Timestamp start = examRoom.getStartTime();
+        Timestamp end = examRoom.getEndTime();
+        int duration = examRoom.getDurationMinutes();
+        if (start != null && end != null) {
+            long diffMillis = end.getTime() - start.getTime();
+            long durationMillis = duration * 60_000L;
+            if (diffMillis < durationMillis) {
+                return new ValidationResult(false, "Khoảng thời gian giữa Start và End phải lớn hơn hoặc bằng thời lượng bài thi!");
+            }
+            if (diffMillis <= 0) {
+                return new ValidationResult(false, "End time phải lớn hơn Start time!");
+            }
+        }
+
         return new ValidationResult(true, "Valid");
     }
     

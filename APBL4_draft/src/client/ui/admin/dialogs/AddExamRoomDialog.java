@@ -29,9 +29,10 @@ public class AddExamRoomDialog extends JDialog {
     private boolean confirmed = false;
     
     // UI Components
+    private JComboBox<Subject> subjectComboBox;
+    private JTextField classStudy; 
     private JTextField roomNameField;
     private JTextField roomPasswordField;
-    private JComboBox<Subject> subjectComboBox;
     private JSpinner questionCountSpinner;
     private JSpinner totalScoreSpinner;
     private JSpinner durationSpinner;
@@ -81,13 +82,40 @@ public class AddExamRoomDialog extends JDialog {
         
         int row = 0;
         
+        // Subject
+        gbc.gridx = 0; gbc.gridy = row; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
+        formPanel.add(new JLabel("Subject:*"), gbc);
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
+        subjectComboBox = new JComboBox<>();
+        for (Subject subject : subjects) {
+            subjectComboBox.addItem(subject);
+        }
+        formPanel.add(subjectComboBox, gbc);
+        row++;
+        
+        // classStudy 
+        gbc.gridx = 0; gbc.gridy = row; gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(new JLabel("Class:*"), gbc);
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
+        classStudy = new JTextField(20);
+        formPanel.add(classStudy, gbc);
+        row++;
+        
         // Room Name
         gbc.gridx = 0; gbc.gridy = row; gbc.anchor = GridBagConstraints.WEST;
         formPanel.add(new JLabel("Room Name:*"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         roomNameField = new JTextField(20);
+        roomNameField.setEditable(false);
         formPanel.add(roomNameField, gbc);
         row++;
+        
+        subjectComboBox.addActionListener(e -> updateRoomName());
+        classStudy.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
+        });
         
         // Room Password
         gbc.gridx = 0; gbc.gridy = row; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
@@ -99,17 +127,6 @@ public class AddExamRoomDialog extends JDialog {
         passwordPanel.add(roomPasswordField, BorderLayout.CENTER);
         passwordPanel.add(generatePasswordButton, BorderLayout.EAST);
         formPanel.add(passwordPanel, gbc);
-        row++;
-        
-        // Subject
-        gbc.gridx = 0; gbc.gridy = row; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
-        formPanel.add(new JLabel("Subject:*"), gbc);
-        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
-        subjectComboBox = new JComboBox<>();
-        for (Subject subject : subjects) {
-            subjectComboBox.addItem(subject);
-        }
-        formPanel.add(subjectComboBox, gbc);
         row++;
         
         // Question Count
@@ -275,6 +292,15 @@ public class AddExamRoomDialog extends JDialog {
         
         add(formPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
+    }
+    
+    private void updateRoomName() {
+        Subject subject = (Subject) subjectComboBox.getSelectedItem();
+        String className = classStudy.getText().trim();
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        String subjectPart = (subject != null) ? subject.getSubjectName() : "";
+        String roomName = subjectPart + className + year;  // Có thể nối bằng dấu _ nếu thích
+        roomNameField.setText(roomName);
     }
     
     private void setupEventHandlers() {
