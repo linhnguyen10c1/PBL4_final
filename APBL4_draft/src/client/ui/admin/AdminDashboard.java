@@ -125,7 +125,15 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             JOptionPane.YES_NO_OPTION);
         
         if (option == JOptionPane.YES_OPTION) {
-            performLogout();
+            System.out.println("🛑 AdminDashboard: Logging out...");
+            
+            if (loginController != null) {
+                loginController.logout(); 
+            }
+            
+            clearDashboardData();
+            
+            System.exit(0); 
         }
     }
     
