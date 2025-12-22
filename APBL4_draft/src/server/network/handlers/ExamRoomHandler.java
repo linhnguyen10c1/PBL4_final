@@ -9,6 +9,7 @@ import model.User;
 import utils.JsonUtil;
 import java.util.List;
 import java.util.Map;
+import model.StudentExamStatus;
 
 public class ExamRoomHandler extends BaseHandler {
     private final ExamRoomService examRoomService;
@@ -16,6 +17,45 @@ public class ExamRoomHandler extends BaseHandler {
     public ExamRoomHandler(AuthService authService) {
         super(authService);
         this.examRoomService = new ExamRoomService();
+    }
+    
+    /**
+     * Handle get student statuses request (Admin only)
+     */
+    public String handleGetStudentStatuses(String data, String sessionToken) {
+        System.out.println("📊 [GET_STUDENT_STATUSES] Processing request");
+        
+        if (!hasPermission(sessionToken, "MANAGE_ROOMS")) {
+            System.out.println("❌ [GET_STUDENT_STATUSES] Access denied");
+            return accessDeniedResponse();
+        }
+        
+        try {
+            Map<String, Object> requestData = JsonUtil.fromJsonToMap(data);
+            if (requestData == null || !requestData.containsKey("roomId")) {
+                System.out.println("❌ [GET_STUDENT_STATUSES] Room ID is required");
+                return invalidRequestResponse("Room ID is required");
+            }
+            
+            int roomId = ((Number) requestData.get("roomId")).intValue();
+            System.out.println("📊 [GET_STUDENT_STATUSES] Getting statuses for room:  " + roomId);
+            
+            ServiceResult<List<StudentExamStatus>> result = examRoomService.getStudentStatusesForRoom(roomId);
+            
+            if (result.isSuccess()) {
+                String statusJson = JsonUtil.toJson(result.getData());
+                System.out.println("✅ [GET_STUDENT_STATUSES] Retrieved " + result.getData().size() + " student statuses");
+                return successResponse(statusJson);
+            } else {
+                System.out.println("❌ [GET_STUDENT_STATUSES] Failed:  " + result.getMessage());
+                return errorResponse(result.getMessage());
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ [GET_STUDENT_STATUSES] Exception: " + e.getMessage());
+            e.printStackTrace();
+            return errorResponse("Error getting student statuses:  " + e.getMessage());
+        }
     }
     
     /**

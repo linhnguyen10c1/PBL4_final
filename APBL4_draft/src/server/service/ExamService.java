@@ -35,7 +35,7 @@ public class ExamService {
             
             // Get all active exam rooms where student is allowed
             List<ExamRoom> allRooms = examRoomDAO.findAll();
-            System.out.println("🔍 [ExamService] Found " + allRooms. size() + " total rooms");
+            System.out.println("🔍 [ExamService] Found " + allRooms.size() + " total rooms");
             
             Timestamp now = new Timestamp(System.currentTimeMillis());
             System.out.println("🔍 [ExamService] Current time: " + now);
@@ -43,10 +43,10 @@ public class ExamService {
             List<ExamRoom> availableRooms = new ArrayList<>();
             
             for (ExamRoom room : allRooms) {
-                System.out.println("🔍 [ExamService] Checking room " + room.getRoomId() + ": " + room. getRoomName());
-                System.out.println("  - Active: " + room. isActive());
+                System.out.println("🔍 [ExamService] Checking room " + room.getRoomId() + ": " + room.getRoomName());
+                System.out.println("  - Active: " + room.isActive());
                 System.out.println("  - Allowed students: " + room.getAllowedStudentIds());
-                System.out.println("  - Student " + studentId + " allowed: " + room. getAllowedStudentIds().contains(studentId));
+                System.out.println("  - Student " + studentId + " allowed: " + room.getAllowedStudentIds().contains(studentId));
                 
                 boolean isActive = room.isActive();
                 boolean isAllowed = room.getAllowedStudentIds().contains(studentId);
@@ -255,12 +255,12 @@ public class ExamService {
             if (session.isTimeExpired()) {
                 // Auto-submit if time expired
                 examSessionDAO.submitSession(session.getSessionId(), true);
-                return ServiceResult.error("Exam time has expired. Your exam has been auto-submitted.");
+                return ServiceResult.error("Exam time has expired.Your exam has been auto-submitted.");
             }
             
             // Validate answer format
             if (answer != null && !answer.matches("[ABCD]")) {
-                return ServiceResult.error("Invalid answer format. Must be A, B, C, or D");
+                return ServiceResult.error("Invalid answer format.Must be A, B, C, or D");
             }
             
             boolean saved = examSessionDAO.saveAnswer(session.getSessionId(), questionId, answer);
@@ -308,7 +308,7 @@ public class ExamService {
             // Get exam result
             ExamResult result = generateExamResult(session);
             
-            System.out.println("✅ [ExamService] Exam submitted successfully. Score: " + result.getTotalScore());
+            System.out.println("✅ [ExamService] Exam submitted successfully.Score: " + result.getTotalScore());
             return ServiceResult.success("Exam submitted successfully", result);
             
         } catch (Exception e) {
@@ -517,14 +517,14 @@ public class ExamService {
 	    result.setStudentName(updatedSession.getStudentName());
 	    result.setStatus(updatedSession.getStatus());
 	    
-	    // 1. Xử lý thời gian nộp bài
+	    // 1.Xử lý thời gian nộp bài
 	    if (updatedSession.getSubmitTime() != null) {
 	        result.setSubmittedAt(updatedSession.getSubmitTime().toString());
 	    } else {
 	        result.setSubmittedAt(new java.sql.Timestamp(System.currentTimeMillis()).toString());
 	    }
 	    
-	    // 2. Quy đổi điểm số
+	    // 2.Quy đổi điểm số
 	    double percentageScore = updatedSession.getTotalScore(); // Điểm hệ 100 từ DB
 	    double roomMaxScore = 100.0;
 	    int duration = 0;
@@ -550,7 +550,7 @@ public class ExamService {
 	    result.setGrade(calculateGrade(percentageScore)); 
 	    result.setTimeLimitMinutes(duration);
 	    
-	    // 3. Thống kê số câu trả lời
+	    // 3.Thống kê số câu trả lời
 	    List<ExamAnswer> answers = updatedSession.getAnswers();
 	    if (answers == null || answers.isEmpty()) {
 	        try {
@@ -568,7 +568,7 @@ public class ExamService {
 	        result.setCorrectAnswers(0);
 	    }
 	    
-	    // 4. Tính thời gian làm bài thực tế
+	    // 4.Tính thời gian làm bài thực tế
 	    if (updatedSession.getStartTime() != null && updatedSession.getSubmitTime() != null) {
 	        long timeDiff = updatedSession.getSubmitTime().getTime() - updatedSession.getStartTime().getTime();
 	        result.setTimeSpentMinutes((int) (timeDiff / (1000 * 60)));

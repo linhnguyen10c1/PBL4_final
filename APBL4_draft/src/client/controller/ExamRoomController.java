@@ -10,6 +10,7 @@ import utils.Protocol;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import model.StudentExamStatus;
 
 /**
  * ExamRoom Controller - Client-side controller for exam room operations
@@ -23,6 +24,39 @@ public class ExamRoomController extends BaseController {
     
     public ExamRoomController(NetworkManager networkManager) {
         super(networkManager);
+    }
+    
+    /**
+     * Get student statuses for a specific room
+     * Used by ManageStudentsDialog to show exam progress
+     */
+    public List<StudentExamStatus> getStudentStatusesForRoom(int roomId) {
+        try {
+            logAction("getStudentStatuses", "Fetching student statuses for room: " + roomId);
+            
+            if (!validateSession()) {
+                return null;
+            }
+            
+            Map<String, Object> requestData = new HashMap<>();
+            requestData.put("roomId", roomId);
+            
+            ResponseData response = sendJsonRequest(Protocol.GET_STUDENT_STATUSES, requestData);
+            
+            if (response.isSuccess()) {
+                List<StudentExamStatus> statuses = JsonUtil.fromJsontoList(response.getData(), StudentExamStatus.class);
+                logAction("getStudentStatuses", "Retrieved " + (statuses != null ?  statuses.size() : 0) + " student statuses");
+                return statuses;
+            } else {
+                System.err.println("❌ [ExamRoomController] Failed to get student statuses:  " + response.getMessage());
+                return null;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ [ExamRoomController] Error getting student statuses:  " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
     
     /**
