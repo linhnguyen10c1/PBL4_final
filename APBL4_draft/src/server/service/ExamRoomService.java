@@ -405,7 +405,7 @@ public class ExamRoomService {
             return new ValidationResult(false, "Duration must be between 1 and 300 minutes");
         }
         try {
-            if (examRoomDAO.isRoomNameExists(examRoom.getRoomName())) {
+            if (examRoomDAO.isRoomNameExists(examRoom.getRoomName(), examRoom.getRoomId())) {
                 return new ValidationResult(false, "Room name already exists! Please choose another.");
             }
         } catch (SQLException e) {
