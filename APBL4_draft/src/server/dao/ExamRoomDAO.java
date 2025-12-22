@@ -148,9 +148,10 @@ public class ExamRoomDAO extends BaseDAO {
         
         return examRooms;
     }
-    public boolean isRoomNameExists(String roomName) throws SQLException {
-        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ?";
-        List<Map<String, Object>> results = executeQueryForList(sql, roomName);
+    public boolean isRoomNameExists(String roomName, int excludeRoomId) throws SQLException {
+        // Tìm phòng có cùng tên NHƯNG khác ID
+        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ? AND room_id != ?";
+        List<Map<String, Object>> results = executeQueryForList(sql, roomName, excludeRoomId);
         return !results.isEmpty();
     }
     
@@ -205,15 +206,25 @@ public class ExamRoomDAO extends BaseDAO {
     /**
      * Map database row to ExamRoom object
      */
+    /**
+     * Map database row to ExamRoom object
+     */
+    /**
+     * Map database row to ExamRoom object
+     */
     private ExamRoom mapToExamRoom(Map<String, Object> row) {
         ExamRoom examRoom = new ExamRoom();
+        
+        // 1. Map ID & Names
         examRoom.setRoomId(getIntValue(row, "room_id", 0));
         examRoom.setRoomName(getStringValue(row, "room_name"));
         examRoom.setRoomPassword(getStringValue(row, "room_password"));
         examRoom.setSubjectId(getIntValue(row, "subject_id", 0));
         examRoom.setSubjectName(getStringValue(row, "subject_name"));
+        
+        // 2. Map Numeric Data
         examRoom.setQuestionCount(getIntValue(row, "question_count", 0));
-        // ✅ NULL SAFE: Numeric fields
+        
         Object totalScoreObj = row.get("total_score");
         if (totalScoreObj instanceof Number) {
             examRoom.setTotalScore(((Number) totalScoreObj).doubleValue());
@@ -223,11 +234,12 @@ public class ExamRoomDAO extends BaseDAO {
         
         examRoom.setDurationMinutes(getIntValue(row, "duration_minutes", 0));
         
-        // ✅ NULL SAFE: Timestamps
+        // 3. Map Time (QUAN TRỌNG: Đây là chỗ lấy dữ liệu cho Dialog)
+        // convertToTimestamp sẽ xử lý cả trường hợp DB trả về String hoặc Timestamp
         examRoom.setStartTime(convertToTimestamp(row.get("start_time")));
         examRoom.setEndTime(convertToTimestamp(row.get("end_time")));
         
-        // ✅ NULL SAFE: Other fields
+        // 4. Map Description & Status
         examRoom.setDescription(getStringValue(row, "description"));
         
         Object isActiveObj = row.get("is_active");
@@ -236,29 +248,22 @@ public class ExamRoomDAO extends BaseDAO {
         } else if (isActiveObj instanceof Number) {
             examRoom.setActive(((Number) isActiveObj).intValue() == 1);
         } else {
-            examRoom.setActive(true); // Default
+            examRoom.setActive(true);
         }
         
         examRoom.setCreatedBy(getIntValue(row, "created_by", 0));
         
-        // ✅ NULL SAFE: Created/Updated timestamps
+        // 5. Map Audit Log (Sửa lỗi copy-paste của code cũ tại đây)
         examRoom.setCreatedAt(safeToString(row.get("created_at")));
         examRoom.setUpdatedAt(safeToString(row.get("updated_at")));
-//        examRoom.setRoomId((Integer) row.get("room_id"));
-//        examRoom.setRoomName((String) row.get("room_name"));
-//        examRoom.setRoomPassword((String) row.get("room_password"));
-//        examRoom.setSubjectId((Integer) row.get("subject_id"));
-//        examRoom.setSubjectName((String) row.get("subject_name"));
-//        examRoom.setQuestionCount((Integer) row.get("question_count"));
-//        examRoom.setTotalScore(((Number) row.get("total_score")).doubleValue());
-//        examRoom.setDurationMinutes((Integer) row.get("duration_minutes"));
-//        examRoom.setStartTime(convertToTimestamp(row.get("start_time")));
-//        examRoom.setEndTime(convertToTimestamp(row.get("end_time")));
-//        examRoom.setDescription((String) row.get("description"));
-//        examRoom.setActive((Boolean) row.get("is_active"));
-//        examRoom.setCreatedBy((Integer) row.get("created_by"));
-//        examRoom.setCreatedAt(row.get("created_at").toString());
-//        examRoom.setUpdatedAt(row.get("updated_at").toString());
+
+        // Debug để kiểm tra xem server có thực sự lấy được giờ không
+        if (examRoom.getStartTime() != null) {
+            System.out.println("DAO Loaded StartTime for Room " + examRoom.getRoomId() + ": " + examRoom.getStartTime());
+        } else {
+            System.out.println("DAO WARNING: StartTime is NULL for Room " + examRoom.getRoomId());
+        }
+
         return examRoom;
     }
     private String getStringValue(Map<String, Object> row, String key) {
@@ -288,38 +293,24 @@ public class ExamRoomDAO extends BaseDAO {
      * Convert any date object to Timestamp safely
      */
     private Timestamp convertToTimestamp(Object obj) {
-        if (obj == null) {
-            return null;
-        }
-        
+        if (obj == null) return null;
+
         try {
-            if (obj instanceof Timestamp) {
-                return (Timestamp) obj;
-            }
-            
-            if (obj instanceof java.time.LocalDateTime) {
-                java.time.LocalDateTime ldt = (java.time.LocalDateTime) obj;
-                return Timestamp.valueOf(ldt);
-            }
-            
-            if (obj instanceof java.util.Date) {
-                java.util.Date date = (java.util.Date) obj;
-                return new Timestamp(date.getTime());
-            }
-            
+            if (obj instanceof Timestamp) return (Timestamp) obj;
+            if (obj instanceof java.time.LocalDateTime) return Timestamp.valueOf((java.time.LocalDateTime) obj);
+            if (obj instanceof java.util.Date) return new Timestamp(((java.util.Date) obj).getTime());
             if (obj instanceof String) {
-                // Parse string to timestamp
+                System.out.println("DEBUG parse string to timestamp: " + obj);
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 java.util.Date date = sdf.parse((String) obj);
                 return new Timestamp(date.getTime());
             }
-            
-            System.err.println("⚠️ Unexpected date type: " + obj.getClass().getName() + " = " + obj);
+            System.err.println("⚠️ Unexpected date type: " + obj.getClass().getName());
             return null;
-            
         } catch (Exception e) {
             System.err.println("❌ Error converting to Timestamp: " + obj + " - " + e.getMessage());
             return null;
         }
     }
+
 }

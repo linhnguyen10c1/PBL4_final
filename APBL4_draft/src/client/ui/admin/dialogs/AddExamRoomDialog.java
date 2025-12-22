@@ -83,7 +83,7 @@ public class AddExamRoomDialog extends JDialog {
         int row = 0;
         
         // Subject
-        gbc.gridx = 0; gbc.gridy = row; gbc.fill = GridBagConstraints.NONE; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = row; gbc.anchor = GridBagConstraints.WEST;
         formPanel.add(new JLabel("Subject:*"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
         subjectComboBox = new JComboBox<>();
