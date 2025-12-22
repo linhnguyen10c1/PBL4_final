@@ -148,10 +148,10 @@ public class ExamRoomDAO extends BaseDAO {
         
         return examRooms;
     }
-    public boolean isRoomNameExists(String roomName, int excludeRoomId) throws SQLException {
-        // Tìm phòng có cùng tên NHƯNG khác ID
-        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ? AND room_id != ?";
-        List<Map<String, Object>> results = executeQueryForList(sql, roomName, excludeRoomId);
+    
+    public boolean isRoomNameAndSubjectExists(String roomName, int subjectId, int excludeRoomId) throws SQLException {
+        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ? AND subject_id = ? AND room_id != ?";
+        List<java.util.Map<String, Object>> results = executeQueryForList(sql, roomName, subjectId, excludeRoomId);
         return !results.isEmpty();
     }
     

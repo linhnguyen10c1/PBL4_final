@@ -7,7 +7,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -18,8 +17,7 @@ public class AddExamRoomDialog extends JDialog {
     private boolean confirmed = false;
     
     private JComboBox<Subject> subjectComboBox;
-    private JTextField classStudy; 
-    private JTextField roomNameField;
+    private JTextField roomNameField; // Đã bỏ classStudy
     private JTextField roomPasswordField;
     private JSpinner questionCountSpinner;
     private JSpinner totalScoreSpinner;
@@ -63,20 +61,12 @@ public class AddExamRoomDialog extends JDialog {
         formPanel.add(subjectComboBox, gbc);
         row++;
         
-        // Class
+        // Room Name - Cho phép tự nhập
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
-        formPanel.add(new JLabel("Class:*"), gbc);
+        formPanel.add(new JLabel("Room Name:*"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
-        classStudy = new JTextField(20);
-        formPanel.add(classStudy, gbc);
-        row++;
-        
-        // Room Name
-        gbc.gridx = 0; gbc.gridy = row;
-        formPanel.add(new JLabel("Room Name:"), gbc);
-        gbc.gridx = 1;
         roomNameField = new JTextField(20);
-        roomNameField.setEditable(false);
+        roomNameField.setEditable(true); 
         formPanel.add(roomNameField, gbc);
         row++;
         
@@ -114,7 +104,7 @@ public class AddExamRoomDialog extends JDialog {
         formPanel.add(durationSpinner, gbc);
         row++;
         
-        // Start Time (Mandatory & Same Row)
+        // Start Time
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("Start Time:*"), gbc);
         gbc.gridx = 1;
@@ -130,7 +120,7 @@ public class AddExamRoomDialog extends JDialog {
         formPanel.add(startPanel, gbc);
         row++;
         
-        // End Time (Mandatory & Same Row)
+        // End Time
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("End Time:*"), gbc);
         gbc.gridx = 1;
@@ -139,8 +129,7 @@ public class AddExamRoomDialog extends JDialog {
         endDateSpinner.setEditor(new JSpinner.DateEditor(endDateSpinner, "yyyy-MM-dd"));
         endTimeSpinner = new JSpinner(new SpinnerDateModel());
         endTimeSpinner.setEditor(new JSpinner.DateEditor(endTimeSpinner, "HH:mm"));
-        // Default: +7 days
-        Calendar cal = Calendar.getInstance(); cal.add(Calendar.DAY_OF_MONTH, 7);
+        java.util.Calendar cal = java.util.Calendar.getInstance(); cal.add(java.util.Calendar.DAY_OF_MONTH, 7);
         endDateSpinner.setValue(cal.getTime());
         JPanel endSpinners = new JPanel(new GridLayout(1, 2, 5, 0));
         endSpinners.add(endDateSpinner); endSpinners.add(endTimeSpinner);
@@ -163,7 +152,7 @@ public class AddExamRoomDialog extends JDialog {
         descriptionArea.setLineWrap(true);
         formPanel.add(new JScrollPane(descriptionArea), gbc);
         
-        // Final Buttons
+        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton saveButton = new JButton("Create Room");
         JButton cancelButton = new JButton("Cancel");
@@ -176,22 +165,9 @@ public class AddExamRoomDialog extends JDialog {
     }
     
     private void setupEventHandlers() {
-        subjectComboBox.addActionListener(e -> updateRoomName());
-        classStudy.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-        });
         generatePasswordButton.addActionListener(e -> roomPasswordField.setText(String.format("%06d", (int)(Math.random() * 1000000))));
         setStartNowButton.addActionListener(e -> { Date n = new Date(); startDateSpinner.setValue(n); startTimeSpinner.setValue(n); });
         setEndNowButton.addActionListener(e -> { Date n = new Date(); endDateSpinner.setValue(n); endTimeSpinner.setValue(n); });
-    }
-    
-    private void updateRoomName() {
-        Subject s = (Subject) subjectComboBox.getSelectedItem();
-        String cls = classStudy.getText().trim();
-        int year = Calendar.getInstance().get(Calendar.YEAR);
-        roomNameField.setText(((s != null) ? s.getSubjectName() : "") + cls + year);
     }
     
     private void handleSave() {
@@ -229,11 +205,11 @@ public class AddExamRoomDialog extends JDialog {
     }
     
     private String combineDateAndTime(Date d, Date t) {
-        Calendar c1 = Calendar.getInstance(); c1.setTime(d);
-        Calendar c2 = Calendar.getInstance(); c2.setTime(t);
-        c1.set(Calendar.HOUR_OF_DAY, c2.get(Calendar.HOUR_OF_DAY));
-        c1.set(Calendar.MINUTE, c2.get(Calendar.MINUTE));
-        c1.set(Calendar.SECOND, 0);
+        java.util.Calendar c1 = java.util.Calendar.getInstance(); c1.setTime(d);
+        java.util.Calendar c2 = java.util.Calendar.getInstance(); c2.setTime(t);
+        c1.set(java.util.Calendar.HOUR_OF_DAY, c2.get(java.util.Calendar.HOUR_OF_DAY));
+        c1.set(java.util.Calendar.MINUTE, c2.get(java.util.Calendar.MINUTE));
+        c1.set(java.util.Calendar.SECOND, 0);
         return DATETIME_FORMAT.format(c1.getTime());
     }
     

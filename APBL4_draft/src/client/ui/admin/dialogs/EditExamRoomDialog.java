@@ -6,7 +6,6 @@ import model.Subject;
 import javax.swing.*;
 import java.awt.*;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -18,8 +17,7 @@ public class EditExamRoomDialog extends JDialog {
     private boolean confirmed = false;
     
     private JComboBox<Subject> subjectComboBox;
-    private JTextField classStudy;
-    private JTextField roomNameField;
+    private JTextField roomNameField; // Đã bỏ classStudy
     private JTextField roomPasswordField;
     private JSpinner questionCountSpinner;
     private JSpinner totalScoreSpinner;
@@ -57,7 +55,7 @@ public class EditExamRoomDialog extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5);
         int row = 0;
         
-        // Subject & Basic Info
+        // Subject
         gbc.gridx = 0; gbc.gridy = row; gbc.anchor = GridBagConstraints.WEST;
         formPanel.add(new JLabel("Subject:*"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
@@ -66,21 +64,16 @@ public class EditExamRoomDialog extends JDialog {
         formPanel.add(subjectComboBox, gbc);
         row++;
         
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
-        formPanel.add(new JLabel("Class:*"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        classStudy = new JTextField(20);
-        formPanel.add(classStudy, gbc);
-        row++;
-        
+        // Room Name - Cho phép chỉnh sửa
         gbc.gridx = 0; gbc.gridy = row;
-        formPanel.add(new JLabel("Room Name:"), gbc);
+        formPanel.add(new JLabel("Room Name:*"), gbc);
         gbc.gridx = 1;
         roomNameField = new JTextField(20);
-        roomNameField.setEditable(false);
+        roomNameField.setEditable(true);
         formPanel.add(roomNameField, gbc);
         row++;
         
+        // Password
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("Password:*"), gbc);
         gbc.gridx = 1;
@@ -114,7 +107,7 @@ public class EditExamRoomDialog extends JDialog {
         formPanel.add(durationSpinner, gbc);
         row++;
         
-        // Start Time (Mandatory & Short Label)
+        // Time Panels
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("Start Time:*"), gbc);
         gbc.gridx = 1;
@@ -130,7 +123,6 @@ public class EditExamRoomDialog extends JDialog {
         formPanel.add(startPanel, gbc);
         row++;
 
-        // End Time (Mandatory & Short Label)
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("End Time:*"), gbc);
         gbc.gridx = 1;
@@ -146,13 +138,12 @@ public class EditExamRoomDialog extends JDialog {
         formPanel.add(endPanel, gbc);
         row++;
         
-        // Active Status
+        // Status & Desc
         gbc.gridx = 1; gbc.gridy = row;
         activeCheckBox = new JCheckBox("Is Active", true);
         formPanel.add(activeCheckBox, gbc);
         row++;
         
-        // Description Area
         gbc.gridx = 0; gbc.gridy = row; gbc.anchor = GridBagConstraints.NORTHWEST;
         formPanel.add(new JLabel("Description:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.BOTH; gbc.weighty = 0.5;
@@ -160,7 +151,6 @@ public class EditExamRoomDialog extends JDialog {
         descriptionArea.setLineWrap(true);
         formPanel.add(new JScrollPane(descriptionArea), gbc);
         
-        // Save/Cancel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton saveButton = new JButton("Update Room");
         JButton cancelButton = new JButton("Cancel");
@@ -181,13 +171,6 @@ public class EditExamRoomDialog extends JDialog {
             }
         }
         
-        // Parse Class Name
-        String rName = originalExamRoom.getRoomName();
-        String sName = originalExamRoom.getSubjectName();
-        String cls = (rName != null && sName != null && rName.startsWith(sName)) 
-                ? rName.substring(sName.length()).replaceAll("\\d{4}$", "") : "";
-        classStudy.setText(cls);
-        
         roomNameField.setText(originalExamRoom.getRoomName());
         roomPasswordField.setText(originalExamRoom.getRoomPassword());
         questionCountSpinner.setValue(originalExamRoom.getQuestionCount());
@@ -196,7 +179,6 @@ public class EditExamRoomDialog extends JDialog {
         activeCheckBox.setSelected(originalExamRoom.isActive());
         descriptionArea.setText(originalExamRoom.getDescription());
         
-        // Date Spinners - Mandatory
         Date start = (originalExamRoom.getStartTime() != null) 
                 ? new Date(originalExamRoom.getStartTime().getTime()) : new Date();
         startDateSpinner.setValue(start); startTimeSpinner.setValue(start);
@@ -207,24 +189,11 @@ public class EditExamRoomDialog extends JDialog {
     }
     
     private void setupEventHandlers() {
-        subjectComboBox.addActionListener(e -> updateRoomName());
-        classStudy.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { updateRoomName(); }
-        });
         generatePasswordButton.addActionListener(e -> roomPasswordField.setText(String.format("%06d", (int)(Math.random() * 1000000))));
         setStartNowButton.addActionListener(e -> { Date n = new Date(); startDateSpinner.setValue(n); startTimeSpinner.setValue(n); });
         setEndNowButton.addActionListener(e -> { Date n = new Date(); endDateSpinner.setValue(n); endTimeSpinner.setValue(n); });
     }
 
-    private void updateRoomName() {
-        Subject s = (Subject) subjectComboBox.getSelectedItem();
-        String cls = classStudy.getText().trim();
-        int year = Calendar.getInstance().get(Calendar.YEAR);
-        roomNameField.setText(((s != null) ? s.getSubjectName() : "") + cls + year);
-    }
-    
     private void handleSave() {
         if (roomNameField.getText().trim().isEmpty()) { JOptionPane.showMessageDialog(this, "Room name is required!"); return; }
         
@@ -258,11 +227,11 @@ public class EditExamRoomDialog extends JDialog {
     }
     
     private String combineDateAndTime(Date d, Date t) {
-        Calendar c1 = Calendar.getInstance(); c1.setTime(d);
-        Calendar c2 = Calendar.getInstance(); c2.setTime(t);
-        c1.set(Calendar.HOUR_OF_DAY, c2.get(Calendar.HOUR_OF_DAY));
-        c1.set(Calendar.MINUTE, c2.get(Calendar.MINUTE));
-        c1.set(Calendar.SECOND, 0);
+        java.util.Calendar c1 = java.util.Calendar.getInstance(); c1.setTime(d);
+        java.util.Calendar c2 = java.util.Calendar.getInstance(); c2.setTime(t);
+        c1.set(java.util.Calendar.HOUR_OF_DAY, c2.get(java.util.Calendar.HOUR_OF_DAY));
+        c1.set(java.util.Calendar.MINUTE, c2.get(java.util.Calendar.MINUTE));
+        c1.set(java.util.Calendar.SECOND, 0);
         return DATETIME_FORMAT.format(c1.getTime());
     }
     
