@@ -17,7 +17,7 @@ public class EditExamRoomDialog extends JDialog {
     private boolean confirmed = false;
     
     private JComboBox<Subject> subjectComboBox;
-    private JTextField roomNameField; // Đã bỏ classStudy
+    private JTextField roomNameField;
     private JTextField roomPasswordField;
     private JSpinner questionCountSpinner;
     private JSpinner totalScoreSpinner;
