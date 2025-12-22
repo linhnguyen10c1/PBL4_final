@@ -36,7 +36,7 @@ public class QuestionsTable extends JPanel {
         
         // Create table model
         String[] columnNames = {
-            "ID", "Subject", "Question Text", "Correct Answer", "Difficulty", "Status", "Created At"
+            "ID", "Subject", "Question Text", "Correct Answer", "Difficulty", "Active", "Created At"
         };
         
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -67,7 +67,7 @@ public class QuestionsTable extends JPanel {
         table.getColumnModel().getColumn(2).setPreferredWidth(300);  // Question Text
         table.getColumnModel().getColumn(3).setPreferredWidth(100);  // Correct Answer
         table.getColumnModel().getColumn(4).setPreferredWidth(80);   // Difficulty
-        table.getColumnModel().getColumn(5).setPreferredWidth(80);   // Status
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);   // Active
         table.getColumnModel().getColumn(6).setPreferredWidth(120);  // Created At
         
         // Add to scroll pane
