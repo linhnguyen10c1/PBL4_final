@@ -149,9 +149,11 @@ public class ExamRoomDAO extends BaseDAO {
         return examRooms;
     }
     
-    public boolean isRoomNameAndSubjectExists(String roomName, int subjectId, int excludeRoomId) throws SQLException {
-        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ? AND subject_id = ? AND room_id != ?";
+    public boolean isActiveRoomExists(String roomName, int subjectId, int excludeRoomId) throws SQLException {
+        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ? AND subject_id = ? AND is_active = true AND room_id != ?";
+        
         List<java.util.Map<String, Object>> results = executeQueryForList(sql, roomName, subjectId, excludeRoomId);
+        
         return !results.isEmpty();
     }
     

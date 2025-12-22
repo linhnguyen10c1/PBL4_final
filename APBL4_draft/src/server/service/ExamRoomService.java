@@ -380,63 +380,67 @@ public class ExamRoomService {
     }
     
     /**
-     * Validate exam room for creation
-     */
-    private ValidationResult validateExamRoomForCreation(ExamRoom examRoom) {
-        if (examRoom == null) {
-            return new ValidationResult(false, "Dữ liệu phòng thi là bắt buộc");
-        }
-
-        if (examRoom.getRoomName() == null || examRoom.getRoomName().trim().isEmpty()) {
-            return new ValidationResult(false, "Tên phòng thi không được để trống");
-        }
-        if (examRoom.getRoomName().length() > 100) {
-            return new ValidationResult(false, "Tên phòng thi không được vượt quá 100 ký tự");
-        }
-
-        if (examRoom.getSubjectId() <= 0) {
-            return new ValidationResult(false, "Vui lòng chọn môn học hợp lệ");
-        }
-
-        if (examRoom.getQuestionCount() <= 0 || examRoom.getQuestionCount() > 100) {
-            return new ValidationResult(false, "Số lượng câu hỏi phải nằm trong khoảng từ 1 đến 100");
-        }
-
-        if (examRoom.getTotalScore() <= 0 || examRoom.getTotalScore() > 1000) {
-            return new ValidationResult(false, "Tổng điểm phải nằm trong khoảng từ 0.1 đến 1000");
-        }
-
-        if (examRoom.getDurationMinutes() <= 0 || examRoom.getDurationMinutes() > 300) {
-            return new ValidationResult(false, "Thời lượng bài thi phải từ 1 đến 300 phút");
-        }
-
-        try {
-            if (examRoomDAO.isRoomNameAndSubjectExists(examRoom.getRoomName(), examRoom.getSubjectId(), examRoom.getRoomId())) {
-                return new ValidationResult(false, "Tên phòng '" + examRoom.getRoomName() + "' đã tồn tại cho môn học này!");
-            }
-        } catch (SQLException e) {
-            return new ValidationResult(false, "Không thể xác thực tên phòng: " + e.getMessage());
-        }
-
-        Timestamp start = examRoom.getStartTime();
-        Timestamp end = examRoom.getEndTime();
-        int duration = examRoom.getDurationMinutes();
-
-        if (start != null && end != null) {
-            long diffMillis = end.getTime() - start.getTime();
-            long durationMillis = duration * 60_000L;
-
-            if (diffMillis < durationMillis) {
-                return new ValidationResult(false, "Khoảng thời gian giữa Bắt đầu và Kết thúc phải lớn hơn hoặc bằng thời lượng bài thi (" + duration + " phút)!");
-            }
-            if (diffMillis <= 0) {
-                return new ValidationResult(false, "Thời gian kết thúc phải lớn hơn thời gian bắt đầu!");
-            }
-        }
-
-        return new ValidationResult(true, "Hợp lệ");
-    }
-    
+	 * Validate exam room for Create and Update
+	 */
+	private ValidationResult validateExamRoomForCreation(ExamRoom examRoom) {
+	    if (examRoom == null) {
+	        return new ValidationResult(false, "Dữ liệu phòng thi là bắt buộc");
+	    }
+	
+	    if (examRoom.getRoomName() == null || examRoom.getRoomName().trim().isEmpty()) {
+	        return new ValidationResult(false, "Tên phòng thi không được để trống");
+	    }
+	    if (examRoom.getRoomName().length() > 100) {
+	        return new ValidationResult(false, "Tên phòng thi không được vượt quá 100 ký tự");
+	    }
+	    if (examRoom.getSubjectId() <= 0) {
+	        return new ValidationResult(false, "Vui lòng chọn môn học hợp lệ");
+	    }
+	    if (examRoom.getQuestionCount() <= 0 || examRoom.getQuestionCount() > 100) {
+	        return new ValidationResult(false, "Số lượng câu hỏi phải từ 1 đến 100");
+	    }
+	    if (examRoom.getTotalScore() <= 0 || examRoom.getTotalScore() > 1000) {
+	        return new ValidationResult(false, "Tổng điểm phải từ 0.1 đến 1000");
+	    }
+	    if (examRoom.getDurationMinutes() <= 0 || examRoom.getDurationMinutes() > 300) {
+	        return new ValidationResult(false, "Thời lượng phải từ 1 đến 300 phút");
+	    }
+	
+	    try {
+	        if (examRoom.isActive()) {
+	            if (examRoomDAO.isActiveRoomExists(
+	                    examRoom.getRoomName(), 
+	                    examRoom.getSubjectId(), 
+	                    examRoom.getRoomId())) {
+	                
+	                return new ValidationResult(false, 
+	                    "Tên phòng '" + examRoom.getRoomName() + "' đã tồn tại và đang hoạt động cho môn học này!");
+	            }
+	        }
+	        
+	    } catch (SQLException e) {
+	        return new ValidationResult(false, "Không thể xác thực tên phòng: " + e.getMessage());
+	    }
+	
+	    Timestamp start = examRoom.getStartTime();
+	    Timestamp end = examRoom.getEndTime();
+	    int duration = examRoom.getDurationMinutes();
+	
+	    if (start != null && end != null) {
+	        long diffMillis = end.getTime() - start.getTime();
+	        long durationMillis = duration * 60_000L;
+	
+	        if (diffMillis < durationMillis) {
+	            return new ValidationResult(false, "Khoảng thời gian (Kết thúc - Bắt đầu) phải >= thời lượng bài thi (" + duration + " phút)!");
+	        }
+	        if (diffMillis <= 0) {
+	            return new ValidationResult(false, "Thời gian kết thúc phải lớn hơn thời gian bắt đầu!");
+	        }
+	    }
+	
+	    return new ValidationResult(true, "Hợp lệ");
+	}
+	    
     /**
      * Validate exam room for update - SIMPLIFIED
      */
