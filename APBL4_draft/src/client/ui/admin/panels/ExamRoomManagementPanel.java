@@ -56,31 +56,27 @@ public class ExamRoomManagementPanel extends JPanel implements ExamRoomControlle
     }
     
     private void initializeUI() {
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    	setLayout(new BorderLayout(10, 10));
+
+    	// Panel trên (Header + Button)
+    	JPanel topPanel = new JPanel();
+    	topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+
+    	topPanel.add(createHeaderPanel());
+    	topPanel.add(Box.createVerticalStrut(10)); // khoảng cách
+//    	topPanel.add(createButtonPanel());
+
+    	// Table
+    	examRoomsTable = new ExamRoomsTable();
+    	add(new JScrollPane(examRoomsTable), BorderLayout.CENTER);
+
+    	// Add vào frame/panel
+    	add(topPanel, BorderLayout.NORTH);
         
-        // Header panel
-        JPanel headerPanel = createHeaderPanel();
-        add(headerPanel, BorderLayout.NORTH);
-        
-        // Main content - table
-        examRoomsTable = new ExamRoomsTable();
-        add(examRoomsTable, BorderLayout.CENTER);
-        
-        // Button panel
-        JPanel buttonPanel = createButtonPanel();
-        add(buttonPanel, BorderLayout.SOUTH);
     }
     
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        
-        // Title
-        JLabel titleLabel = new JLabel("Exam Room Management");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        panel.add(titleLabel, BorderLayout.WEST);
-        
-        // Search panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         searchPanel.add(new JLabel("Search:"));
         
@@ -92,6 +88,7 @@ public class ExamRoomManagementPanel extends JPanel implements ExamRoomControlle
         searchPanel.add(searchButton);
         
         panel.add(searchPanel, BorderLayout.EAST);
+        panel.add(createButtonPanel());
         
         return panel;
     }

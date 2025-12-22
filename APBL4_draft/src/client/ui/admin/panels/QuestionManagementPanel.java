@@ -48,15 +48,6 @@ public class QuestionManagementPanel extends JPanel implements QuestionsTable.Qu
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        // Search panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        searchPanel.add(new JLabel("Search:"));
-        searchField = new JTextField(20);
-        searchPanel.add(searchField);
-        
-        JButton searchButton = new JButton("Search");
-        searchButton.addActionListener(e -> performSearch());
-        searchPanel.add(searchButton);
         
         // Filter panel
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -82,6 +73,16 @@ public class QuestionManagementPanel extends JPanel implements QuestionsTable.Qu
         deleteButton.setEnabled(false);
         deleteButton.setForeground(Color.RED);
         
+        // Search panel
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        searchPanel.add(new JLabel("Search:"));
+        searchField = new JTextField(20);
+        searchPanel.add(searchField);
+        
+        JButton searchButton = new JButton("Search");
+        searchButton.addActionListener(e -> performSearch());
+        searchPanel.add(searchButton);
+        
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
@@ -90,11 +91,11 @@ public class QuestionManagementPanel extends JPanel implements QuestionsTable.Qu
         
         // Combine panels
         JPanel filtersAndSearch = new JPanel(new BorderLayout());
-        filtersAndSearch.add(searchPanel, BorderLayout.WEST);
+        filtersAndSearch.add(searchPanel, BorderLayout.EAST);
         filtersAndSearch.add(filterPanel, BorderLayout.CENTER);
         
         topPanel.add(filtersAndSearch, BorderLayout.CENTER);
-        topPanel.add(buttonPanel, BorderLayout.EAST);
+        topPanel.add(buttonPanel, BorderLayout.WEST);
         
         
         add(topPanel, BorderLayout.NORTH);
