@@ -64,7 +64,7 @@ public class EditExamRoomDialog extends JDialog {
         formPanel.add(subjectComboBox, gbc);
         row++;
         
-        // Room Name - Cho phép chỉnh sửa
+        // Room Name
         gbc.gridx = 0; gbc.gridy = row;
         formPanel.add(new JLabel("Room Name:*"), gbc);
         gbc.gridx = 1;
