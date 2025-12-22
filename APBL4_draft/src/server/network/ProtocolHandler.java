@@ -100,6 +100,8 @@ public class ProtocolHandler {
                 return examRoomHandler.handleGetSubjects(sessionToken);
             case Protocol.ADD_STUDENTS_TO_ROOM:
                 return examRoomHandler.handleAddStudentsToRoom(data, sessionToken);
+            case Protocol.GET_STUDENT_STATUSES:
+            	return examRoomHandler.handleGetStudentStatuses(data, sessionToken);
             
             // Exam Operations
             case Protocol.GET_AVAILABLE_EXAM_ROOMS:

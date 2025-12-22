@@ -559,6 +559,7 @@ public class ExamSessionDAO extends BaseDAO {
         
         return answer;
     }
+    
     private double calculateSessionScore(int sessionId) throws SQLException {
         String sql = """
             SELECT 
@@ -601,6 +602,7 @@ public class ExamSessionDAO extends BaseDAO {
         // Return percentage score
         return maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100.0 : 0.0;
     }
+    
     public List<ExamSession> findAllSessions() throws SQLException {
         String sql = """
             SELECT es.*, er.room_name, er.subject_id, s.subject_name, er.question_count,
@@ -622,7 +624,55 @@ public class ExamSessionDAO extends BaseDAO {
         
         return sessions;
     }
-
+    /**
+     * Find all sessions for a specific room (all statuses)
+     * Used by Admin to view student statuses
+     */
+    public List<ExamSession> findAllSessionsForRoom(int roomId) throws SQLException {
+        String sql = """
+            SELECT 
+                es.session_id, 
+                es.room_id, 
+                es.student_id, 
+                es.session_token,
+                es.start_time, 
+                es.submit_time, 
+                es.total_score as session_score,
+                es.status, 
+                es.created_at,
+                er.room_name, 
+                er.room_password,
+                er.subject_id, 
+                s.subject_name, 
+                er.question_count,
+                er.duration_minutes, 
+                er.total_score as max_score,
+                er.start_time as room_start_time, 
+                er.end_time as room_end_time,
+                er.description,
+                er.is_active as room_active,
+                er.created_by,
+                u.full_name as student_name
+            FROM exam_sessions es
+            JOIN exam_rooms er ON es.room_id = er.room_id
+            JOIN subjects s ON er.subject_id = s.subject_id
+            JOIN users u ON es.student_id = u.user_id
+            WHERE es.room_id = ? 
+            ORDER BY es.student_id
+            """;
+        
+        List<Map<String, Object>> results = executeQueryForList(sql, roomId);
+        List<ExamSession> sessions = new ArrayList<>();
+        
+        for (Map<String, Object> row : results) {
+            ExamSession session = mapToExamSession(row);
+            sessions.add(session);
+        }
+        
+        System.out.println("✅ [ExamSessionDAO] Found " + sessions.size() + " sessions for room " + roomId);
+        return sessions;
+    }
+    
     /**
      * Find sessions by status
      */

@@ -3,20 +3,18 @@ package client.ui.admin.dialogs;
 import client.controller.ExamRoomController;
 import model.ExamRoom;
 import model.User;
+import model.StudentExamStatus;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
-/**
- * Manage Students Dialog - Dialog for managing students in exam room
- * 
- * @author linhnguyen10c1
- * @since 2025-10-15 08:40:18 UTC
- */
 public class ManageStudentsDialog extends JDialog {
     
     private ExamRoom examRoom;
@@ -34,9 +32,15 @@ public class ManageStudentsDialog extends JDialog {
     private JButton addAllButton;
     private JButton removeAllButton;
     private JTextField searchField;
+    private JLabel refreshStatusLabel;
     
     // Current state
     private List<User> currentAssignedStudents;
+    
+    // Status tracking
+    private Map<Integer, StudentExamStatus> studentStatusMap;
+    private Timer autoRefreshTimer;
+    private static final int REFRESH_INTERVAL_MS = 5000; // 5 seconds
     
     public ManageStudentsDialog(JFrame parent, ExamRoom examRoom, 
                                List<User> allStudents, ExamRoomController examRoomController) {
@@ -45,12 +49,15 @@ public class ManageStudentsDialog extends JDialog {
         this.allStudents = allStudents != null ? allStudents : new ArrayList<>();
         this.examRoomController = examRoomController;
         this.currentAssignedStudents = new ArrayList<>();
+        this.studentStatusMap = new HashMap<>();
         
         initializeUI();
         setupEventHandlers();
         loadFreshStudentData();
+        loadStudentStatuses(); // Load statuses after student data
+        startAutoRefresh();
         
-        setSize(800, 600);
+        setSize(900, 600); // Wider to accommodate Status column
         setLocationRelativeTo(parent);
     }
     
@@ -69,11 +76,12 @@ public class ManageStudentsDialog extends JDialog {
         JPanel buttonPanel = createButtonPanel();
         add(buttonPanel, BorderLayout.SOUTH);
     }
+    
     private void loadFreshStudentData() {
         try {
             System.out.println("🔍 [ManageStudentsDialog] Loading fresh student data for room: " + examRoom.getRoomId());
             
-            // ✅ FIX 1: Get fresh ExamRoom data from server
+            // Get fresh ExamRoom data from server
             List<ExamRoom> allRooms = examRoomController.getAllExamRooms();
             if (allRooms != null) {
                 ExamRoom freshRoom = allRooms.stream()
@@ -81,13 +89,12 @@ public class ManageStudentsDialog extends JDialog {
                     .findFirst()
                     .orElse(examRoom);
                 
-                // Update with fresh data
                 this.examRoom = freshRoom;
-                System.out.println("✅ [ManageStudentsDialog] Fresh room data loaded. Assigned students: " + 
+                System.out.println("✅ [ManageStudentsDialog] Fresh room data loaded.Assigned students: " + 
                                  freshRoom.getAllowedStudentIds().size());
             }
             
-            // ✅ FIX 2: Load currently assigned students from fresh data
+            // Load currently assigned students from fresh data
             currentAssignedStudents.clear();
             for (Integer studentId : examRoom.getAllowedStudentIds()) {
                 User student = findStudentById(studentId);
@@ -101,33 +108,123 @@ public class ManageStudentsDialog extends JDialog {
             
             System.out.println("✅ [ManageStudentsDialog] Total assigned students loaded: " + currentAssignedStudents.size());
             
-            // ✅ FIX 3: Update UI
             updateTables();
             
         } catch (Exception e) {
             System.err.println("❌ [ManageStudentsDialog] Error loading fresh student data: " + e.getMessage());
             e.printStackTrace();
-            
-            // Fallback to original method
             loadStudentData();
         }
+    }
+    
+    /**
+     * Load student statuses from server
+     */
+    private void loadStudentStatuses() {
+        try {
+            System.out.println("📊 [ManageStudentsDialog] Loading student statuses...");
+            
+            List<StudentExamStatus> statuses = examRoomController.getStudentStatusesForRoom(examRoom.getRoomId());
+            
+            if (statuses != null) {
+                studentStatusMap.clear();
+                for (StudentExamStatus status : statuses) {
+                    studentStatusMap.put(status.getStudentId(), status);
+                }
+                System.out.println("✅ [ManageStudentsDialog] Loaded " + statuses.size() + " student statuses");
+                
+                // Update only the status column without recreating the table
+                updateStatusColumn();
+            } else {
+                System.err.println("⚠️ [ManageStudentsDialog] Failed to load student statuses");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ [ManageStudentsDialog] Error loading student statuses: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Update only the status column in assigned students table
+     */
+    private void updateStatusColumn() {
+        SwingUtilities.invokeLater(() -> {
+            for (int row = 0; row < assignedTableModel.getRowCount(); row++) {
+                int studentId = (Integer) assignedTableModel.getValueAt(row, 0);
+                StudentExamStatus status = studentStatusMap.get(studentId);
+                
+                String displayStatus = (status != null) ? status.getDisplayStatus() : "Not Started";
+                assignedTableModel.setValueAt(displayStatus, row, 3); // Column 3 = Status
+            }
+            
+            // Update refresh status label
+            if (refreshStatusLabel != null) {
+                refreshStatusLabel.setText("Last refresh: " + 
+                    new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date()));
+            }
+        });
+    }
+    
+    /**
+     * Start auto-refresh timer (every 5 seconds)
+     */
+    private void startAutoRefresh() {
+        autoRefreshTimer = new Timer(REFRESH_INTERVAL_MS, e -> {
+            // Run in background to avoid blocking UI
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadStudentStatuses();
+                    return null;
+                }
+            }.execute();
+        });
+        autoRefreshTimer.start();
+        System.out.println("🔄 [ManageStudentsDialog] Auto-refresh started (every " + (REFRESH_INTERVAL_MS/1000) + "s)");
+    }
+    
+    /**
+     * Stop auto-refresh timer
+     */
+    private void stopAutoRefresh() {
+        if (autoRefreshTimer != null && autoRefreshTimer.isRunning()) {
+            autoRefreshTimer.stop();
+            System.out.println("🛑 [ManageStudentsDialog] Auto-refresh stopped");
+        }
+    }
+    
+    @Override
+    public void dispose() {
+        stopAutoRefresh();
+        super.dispose();
     }
     
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        JLabel titleLabel = new JLabel("Manage Students for: " + examRoom.getRoomName());
+        JLabel titleLabel = new JLabel("Manage Students for:  " + examRoom.getRoomName());
         titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
         panel.add(titleLabel, BorderLayout.WEST);
         
-        // Search panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        searchPanel.add(new JLabel("Search:"));
-        searchField = new JTextField(15);
-        searchPanel.add(searchField);
+        // Right side:  Search + Refresh status
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         
-        panel.add(searchPanel, BorderLayout.EAST);
+        // Refresh status
+        refreshStatusLabel = new JLabel("Auto-refresh: ON (5s)");
+        refreshStatusLabel.setForeground(new Color(0, 128, 0));
+        refreshStatusLabel.setFont(new Font("Arial", Font.ITALIC, 11));
+        rightPanel.add(refreshStatusLabel);
+        
+        rightPanel.add(Box.createHorizontalStrut(20));
+        
+        // Search
+        rightPanel.add(new JLabel("Search: "));
+        searchField = new JTextField(15);
+        rightPanel.add(searchField);
+        
+        panel.add(rightPanel, BorderLayout.EAST);
         
         return panel;
     }
@@ -156,9 +253,9 @@ public class ManageStudentsDialog extends JDialog {
     private JPanel createAvailableStudentsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Available Students"));
-        panel.setPreferredSize(new Dimension(300, 0));
+        panel.setPreferredSize(new Dimension(280, 0));
         
-        // Table
+        // Table - 3 columns (no status for available students)
         String[] columnNames = {"ID", "Username", "Full Name"};
         availableTableModel = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -171,9 +268,9 @@ public class ManageStudentsDialog extends JDialog {
         availableStudentsTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         
         // Set column widths
-        availableStudentsTable.getColumnModel().getColumn(0).setPreferredWidth(50);
-        availableStudentsTable.getColumnModel().getColumn(1).setPreferredWidth(100);
-        availableStudentsTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+        availableStudentsTable.getColumnModel().getColumn(0).setPreferredWidth(40);
+        availableStudentsTable.getColumnModel().getColumn(1).setPreferredWidth(90);
+        availableStudentsTable.getColumnModel().getColumn(2).setPreferredWidth(130);
         
         JScrollPane scrollPane = new JScrollPane(availableStudentsTable);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -184,10 +281,10 @@ public class ManageStudentsDialog extends JDialog {
     private JPanel createAssignedStudentsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Assigned Students"));
-        panel.setPreferredSize(new Dimension(300, 0));
+        panel.setPreferredSize(new Dimension(420, 0)); // Wider for Status column
         
-        // Table
-        String[] columnNames = {"ID", "Username", "Full Name"};
+        // Table - 4 columns including Status
+        String[] columnNames = {"ID", "Username", "Full Name", "Status"};
         assignedTableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -199,14 +296,64 @@ public class ManageStudentsDialog extends JDialog {
         assignedStudentsTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         
         // Set column widths
-        assignedStudentsTable.getColumnModel().getColumn(0).setPreferredWidth(50);
-        assignedStudentsTable.getColumnModel().getColumn(1).setPreferredWidth(100);
-        assignedStudentsTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+        assignedStudentsTable.getColumnModel().getColumn(0).setPreferredWidth(40);
+        assignedStudentsTable.getColumnModel().getColumn(1).setPreferredWidth(80);
+        assignedStudentsTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        assignedStudentsTable.getColumnModel().getColumn(3).setPreferredWidth(160);
+        
+        // Custom renderer for Status column
+        assignedStudentsTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
         
         JScrollPane scrollPane = new JScrollPane(assignedStudentsTable);
         panel.add(scrollPane, BorderLayout.CENTER);
         
+        // Info label at bottom
+        JLabel infoLabel = new JLabel("<html><i>🔒 Students with status 'In Progress' or 'Submitted' cannot be removed</i></html>");
+        infoLabel.setFont(new Font("Arial", Font.PLAIN, 10));
+        infoLabel.setForeground(Color.GRAY);
+        infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 0));
+        panel.add(infoLabel, BorderLayout.SOUTH);
+        
         return panel;
+    }
+    
+    /**
+     * Custom cell renderer for Status column
+     */
+    private class StatusCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            
+            String status = value != null ? value.toString() : "Not Started";
+            setHorizontalAlignment(SwingConstants.LEFT);
+            
+            if (! isSelected) {
+                if (status.equals("Not Started")) {
+                    setForeground(Color.GRAY);
+                    setText("⚪ " + status);
+                } else if (status.equals("In Progress")) {
+                    setForeground(new Color(255, 140, 0)); // Orange
+                    setText("🟡 " + status);
+                } else if (status.startsWith("Submitted: ")) {
+                    setForeground(new Color(0, 150, 0)); // Green
+                    setText("✅ " + status);
+                } else if (status.startsWith("Auto-submitted:")) {
+                    setForeground(new Color(255, 100, 0)); // Dark orange
+                    setText("⏰ " + status);
+                } else {
+                    setForeground(Color.BLACK);
+                    setText(status);
+                }
+            } else {
+                setForeground(Color.WHITE);
+                setText(status);
+            }
+            
+            return this;
+        }
     }
     
     private JPanel createControlPanel() {
@@ -246,6 +393,15 @@ public class ManageStudentsDialog extends JDialog {
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JButton refreshButton = new JButton("🔄 Refresh Now");
+        refreshButton.addActionListener(e -> {
+            loadStudentStatuses();
+            JOptionPane.showMessageDialog(this, "Status refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
+        });
+        panel.add(refreshButton);
+        
+        panel.add(Box.createHorizontalStrut(20));
         
         JButton saveButton = new JButton("Save Changes");
         JButton cancelButton = new JButton("Cancel");
@@ -298,7 +454,6 @@ public class ManageStudentsDialog extends JDialog {
         System.out.println("🔍 [ManageStudentsDialog] Loading student data (fallback method)");
         System.out.println("  - ExamRoom allowed students: " + examRoom.getAllowedStudentIds());
         
-        // Load currently assigned students
         currentAssignedStudents.clear();
         for (Integer studentId : examRoom.getAllowedStudentIds()) {
             User student = findStudentById(studentId);
@@ -313,11 +468,20 @@ public class ManageStudentsDialog extends JDialog {
         System.out.println("✅ [ManageStudentsDialog] Loaded " + currentAssignedStudents.size() + " assigned students");
         updateTables();
     }
+    
     private void updateTables() {
-        // Update assigned students table
+        // Update assigned students table with status
         assignedTableModel.setRowCount(0);
         for (User student : currentAssignedStudents) {
-            Object[] row = {student.getUserId(), student.getUsername(), student.getFullName()};
+            StudentExamStatus status = studentStatusMap.get(student.getUserId());
+            String displayStatus = (status != null) ? status.getDisplayStatus() : "Not Started";
+            
+            Object[] row = {
+                student.getUserId(), 
+                student.getUsername(), 
+                student.getFullName(),
+                displayStatus
+            };
             assignedTableModel.addRow(row);
         }
         
@@ -331,15 +495,13 @@ public class ManageStudentsDialog extends JDialog {
         
         int availableCount = 0;
         for (User student : allStudents) {
-            // ✅ Skip if already assigned
             if (isStudentAssigned(student.getUserId())) {
                 continue;
             }
             
-            // Apply search filter
-            if (!searchTerm.isEmpty()) {
+            if (! searchTerm.isEmpty()) {
                 String searchText = (student.getUsername() + " " + student.getFullName()).toLowerCase();
-                if (!searchText.contains(searchTerm)) {
+                if (! searchText.contains(searchTerm)) {
                     continue;
                 }
             }
@@ -349,7 +511,7 @@ public class ManageStudentsDialog extends JDialog {
             availableCount++;
         }
         
-        System.out.println("✅ [ManageStudentsDialog] Available table updated: " + availableCount + " rows");
+        System.out.println("✅ [ManageStudentsDialog] Available table updated:  " + availableCount + " rows");
     }
     
     private void addSelectedStudents() {
@@ -361,6 +523,8 @@ public class ManageStudentsDialog extends JDialog {
             User student = findStudentById(studentId);
             if (student != null && !isStudentAssigned(studentId)) {
                 currentAssignedStudents.add(student);
+                // New students have no session yet
+                studentStatusMap.put(studentId, new StudentExamStatus(studentId, null, null, examRoom.getTotalScore()));
             }
         }
         
@@ -371,14 +535,45 @@ public class ManageStudentsDialog extends JDialog {
         int[] selectedRows = assignedStudentsTable.getSelectedRows();
         if (selectedRows.length == 0) return;
         
-        // Remove in reverse order to maintain indices
-        for (int i = selectedRows.length - 1; i >= 0; i--) {
-            int row = selectedRows[i];
+        List<String> cannotRemove = new ArrayList<>();
+        List<Integer> toRemove = new ArrayList<>();
+        
+        // Check each selected student
+        for (int row : selectedRows) {
             int studentId = (Integer) assignedTableModel.getValueAt(row, 0);
-            currentAssignedStudents.removeIf(student -> student.getUserId() == studentId);
+            String username = (String) assignedTableModel.getValueAt(row, 1);
+            
+            StudentExamStatus status = studentStatusMap.get(studentId);
+            
+            if (status != null && !status.canBeRemoved()) {
+                cannotRemove.add(username + " (" + status.getDisplayStatus() + ")");
+            } else {
+                toRemove.add(studentId);
+            }
         }
         
-        updateTables();
+        // Show warning if some cannot be removed
+        if (!cannotRemove.isEmpty()) {
+            String message = "Cannot remove the following students who have started or submitted the exam:\n\n";
+            for (String name : cannotRemove) {
+                message += "• " + name + "\n";
+            }
+            if (!toRemove.isEmpty()) {
+                message += "\n" + toRemove.size() + " other student(s) will be removed.";
+            }
+            
+            JOptionPane.showMessageDialog(this, message, "Cannot Remove", JOptionPane.WARNING_MESSAGE);
+        }
+        
+        // Remove allowed students
+        for (Integer studentId : toRemove) {
+            currentAssignedStudents.removeIf(student -> student.getUserId() == studentId);
+            studentStatusMap.remove(studentId);
+        }
+        
+        if (!toRemove.isEmpty()) {
+            updateTables();
+        }
     }
     
     private void addAllStudents() {
@@ -387,6 +582,7 @@ public class ManageStudentsDialog extends JDialog {
             User student = findStudentById(studentId);
             if (student != null && !isStudentAssigned(studentId)) {
                 currentAssignedStudents.add(student);
+                studentStatusMap.put(studentId, new StudentExamStatus(studentId, null, null, examRoom.getTotalScore()));
             }
         }
         
@@ -394,21 +590,54 @@ public class ManageStudentsDialog extends JDialog {
     }
     
     private void removeAllStudents() {
-        currentAssignedStudents.clear();
+        List<String> cannotRemove = new ArrayList<>();
+        List<User> toRemove = new ArrayList<>();
+        
+        // Check each assigned student
+        for (User student : currentAssignedStudents) {
+            StudentExamStatus status = studentStatusMap.get(student.getUserId());
+            
+            if (status != null && ! status.canBeRemoved()) {
+                cannotRemove.add(student.getUsername() + " (" + status.getDisplayStatus() + ")");
+            } else {
+                toRemove.add(student);
+            }
+        }
+        
+        // Show warning if some cannot be removed
+        if (!cannotRemove.isEmpty()) {
+            String message = "Cannot remove the following students who have started or submitted the exam:\n\n";
+            for (String name : cannotRemove) {
+                message += "• " + name + "\n";
+            }
+            message += "\n" + toRemove.size() + " student(s) will be removed.";
+            
+            int confirm = JOptionPane.showConfirmDialog(this, message, 
+                "Partial Remove", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            
+            if (confirm != JOptionPane.OK_OPTION) {
+                return;
+            }
+        }
+        
+        // Remove allowed students
+        for (User student :  toRemove) {
+            currentAssignedStudents.remove(student);
+            studentStatusMap.remove(student.getUserId());
+        }
+        
         updateTables();
     }
     
     private void saveChanges() {
-        // Get current assigned student IDs
         List<Integer> studentIds = currentAssignedStudents.stream()
-            .map(User::getUserId)
+            .map(User:: getUserId)
             .collect(Collectors.toList());
         
-        // Update the exam room on server
         boolean success = examRoomController.addStudentsToRoom(examRoom.getRoomId(), studentIds);
         
         if (success) {
-        	 examRoom.setAllowedStudentIds(studentIds);
+            examRoom.setAllowedStudentIds(studentIds);
             dispose();
         }
     }

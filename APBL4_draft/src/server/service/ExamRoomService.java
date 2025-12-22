@@ -8,6 +8,10 @@ import server.dao.SubjectDAO;
 import server.dao.UserDAO;
 import java.util.List;
 import java.util.stream.Collectors;
+import model.StudentExamStatus;
+import model.ExamSession;
+import server.dao.ExamSessionDAO;
+import java.util.ArrayList;
 
 /**
  * ExamRoom Service - Business logic for exam room management
@@ -20,11 +24,13 @@ public class ExamRoomService {
     private final ExamRoomDAO examRoomDAO;
     private final SubjectDAO subjectDAO;
     private final UserDAO userDAO;
+    private final ExamSessionDAO examSessionDAO;
     
     public ExamRoomService() {
         this.examRoomDAO = new ExamRoomDAO();
         this.subjectDAO = new SubjectDAO();
         this.userDAO = new UserDAO();
+        this.examSessionDAO = new ExamSessionDAO();
     }
     
     /**
@@ -50,9 +56,9 @@ public class ExamRoomService {
             
             int availableQuestions = subjectDAO.countQuestionsBySubject(examRoom.getSubjectId());
             if (availableQuestions < examRoom.getQuestionCount()) {
-                System.out.println("❌ [ExamRoomService] Not enough questions. Available: " + 
+                System.out.println("❌ [ExamRoomService] Not enough questions.Available: " + 
                                  availableQuestions + ", Required: " + examRoom.getQuestionCount());
-                return ServiceResult.error("Not enough questions in subject. Available: " + 
+                return ServiceResult.error("Not enough questions in subject.Available: " + 
                                          availableQuestions + ", Required: " + examRoom.getQuestionCount());
             }
             
@@ -109,7 +115,7 @@ public class ExamRoomService {
             
             int availableQuestions = subjectDAO.countQuestionsBySubject(examRoom.getSubjectId());
             if (availableQuestions < examRoom.getQuestionCount()) {
-                return ServiceResult.error("Not enough questions in subject. Available: " + 
+                return ServiceResult.error("Not enough questions in subject.Available: " + 
                                          availableQuestions + ", Required: " + examRoom.getQuestionCount());
             }
             
@@ -268,6 +274,75 @@ public class ExamRoomService {
             System.err.println("❌ [ExamRoomService] Error adding students to room: " + e.getMessage());
             e.printStackTrace();
             return ServiceResult.error("Failed to add students: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get student statuses for a specific room
+     * Returns status for ALL assigned students (including those who haven't started)
+     */
+    public ServiceResult<List<StudentExamStatus>> getStudentStatusesForRoom(int roomId) {
+        try {
+            System.out.println("📊 [ExamRoomService] Getting student statuses for room:  " + roomId);
+            
+            // 1.Get room info for max score
+            ExamRoom room = examRoomDAO.findById(roomId);
+            if (room == null) {
+                return ServiceResult.error("Exam room not found");
+            }
+            
+            double roomMaxScore = room.getTotalScore();
+            List<Integer> assignedStudentIds = room.getAllowedStudentIds();
+            
+            System.out.println("📊 [ExamRoomService] Room has " + assignedStudentIds.size() + " assigned students");
+            
+            // 2.Get all sessions for this room
+            ExamSessionDAO examSessionDAO = new ExamSessionDAO();
+            List<ExamSession> sessions = examSessionDAO.findAllSessionsForRoom(roomId);
+            
+            // 3.Create a map for quick lookup:  studentId -> session
+            java.util.Map<Integer, ExamSession> sessionMap = new java.util.HashMap<>();
+            for (ExamSession session :  sessions) {
+                sessionMap.put(session.getStudentId(), session);
+            }
+            
+            // 4.Build status list for ALL assigned students
+            List<StudentExamStatus> statusList = new ArrayList<>();
+            
+            for (Integer studentId : assignedStudentIds) {
+                StudentExamStatus statusInfo = new StudentExamStatus();
+                statusInfo.setStudentId(studentId);
+                statusInfo.setMaxScore(roomMaxScore);
+                
+                ExamSession session = sessionMap.get(studentId);
+                if (session == null) {
+                    // No session = Not started
+                    statusInfo.setStatus(null);
+                    statusInfo.setScore(null);
+                } else {
+                    statusInfo.setStatus(session.getStatus());
+                    
+                    // Calculate absolute score if submitted
+                    if (session.isSubmitted()) {
+                        double percentageScore = session.getTotalScore();
+                        double absoluteScore = (percentageScore / 100.0) * roomMaxScore;
+                        absoluteScore = Math.round(absoluteScore * 100.0) / 100.0;
+                        statusInfo.setScore(absoluteScore);
+                    } else {
+                        statusInfo.setScore(null);
+                    }
+                }
+                
+                statusList.add(statusInfo);
+            }
+            
+            System.out.println("✅ [ExamRoomService] Built status list for " + statusList.size() + " students");
+            return ServiceResult.success("Student statuses retrieved successfully", statusList);
+            
+        } catch (Exception e) {
+            System.err.println("❌ [ExamRoomService] Error getting student statuses: " + e.getMessage());
+            e.printStackTrace();
+            return ServiceResult.error("Failed to retrieve student statuses:  " + e.getMessage());
         }
     }
     
