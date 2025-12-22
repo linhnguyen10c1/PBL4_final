@@ -137,7 +137,9 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
             if (choice == JOptionPane. YES_OPTION) {
                 // Auto-submit exam
                 onSubmitExamRequested(currentExamSession, true);
-                performLogout();
+                loginController.logout();
+                shutdownExecutor();
+                System.exit(0);
             }
         } else {
             int choice = JOptionPane.showConfirmDialog(this,
@@ -146,7 +148,10 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
                 JOptionPane.YES_NO_OPTION);
                 
             if (choice == JOptionPane. YES_OPTION) {
-                performLogout();
+            	System.out.println("🛑 StudentDashboard: Logging out...");
+            	loginController.logout();
+                shutdownExecutor();
+                System.exit(0);
             }
         }
     }

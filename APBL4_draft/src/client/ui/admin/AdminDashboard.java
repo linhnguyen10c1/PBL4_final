@@ -6,7 +6,6 @@ import client.controller.LoginController;
 import client.controller.QuestionController;
 import client.controller.UserController;
 import client.network.NetworkManager;
-import client.ui.admin.components.PlaceholderPanel;
 import client.ui.admin.interfaces.AdminDashboardCallbacks;
 import client.ui.admin.panels.*;
 import client.ui.auth.LoginFrame;
@@ -100,9 +99,6 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
         examRoomManagementPanel = new ExamRoomManagementPanel(this, examRoomController);
         tabbedPane.addTab("Room Management", examRoomManagementPanel);
         
-        // REPORTS (placeholder)
-        tabbedPane.addTab("Reports", new PlaceholderPanel("Reports & Statistics"));
-        
         return tabbedPane;
     }
     
@@ -129,7 +125,15 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
             JOptionPane.YES_NO_OPTION);
         
         if (option == JOptionPane.YES_OPTION) {
-            performLogout();
+            System.out.println("🛑 AdminDashboard: Logging out...");
+            
+            if (loginController != null) {
+                loginController.logout(); 
+            }
+            
+            clearDashboardData();
+            
+            System.exit(0); 
         }
     }
     
@@ -192,7 +196,7 @@ public class AdminDashboard extends JFrame implements AdminDashboardCallbacks {
     
     @Override
     public void onTabChanged(int tabIndex) {
-        String[] tabNames = {"User Management", "Question Management", "Room Management", "Reports"};
+        String[] tabNames = {"User Management", "Question Management", "Room Management"};
         if (tabIndex >= 0 && tabIndex < tabNames.length) {
             updateStatus("Current tab: " + tabNames[tabIndex]);
         }
