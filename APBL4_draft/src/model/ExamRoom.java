@@ -12,11 +12,11 @@ public class ExamRoom {
     private String roomName;
     private String roomPassword;
     private int subjectId;
-    private String subjectName; // For display purposes
+    private String subjectName;
     private int questionCount;
     private double totalScore;
     private int durationMinutes;
-    private Timestamp startTime;    // ✅ Dùng Timestamp
+    private Timestamp startTime;    
     private Timestamp endTime;
     private String description;
     private boolean isActive;
