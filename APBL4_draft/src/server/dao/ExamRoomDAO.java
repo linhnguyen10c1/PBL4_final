@@ -148,6 +148,11 @@ public class ExamRoomDAO extends BaseDAO {
         
         return examRooms;
     }
+    public boolean isRoomNameExists(String roomName) throws SQLException {
+        String sql = "SELECT room_id FROM exam_rooms WHERE room_name = ?";
+        List<Map<String, Object>> results = executeQueryForList(sql, roomName);
+        return !results.isEmpty();
+    }
     
     /**
      * Add students to room
