@@ -7,17 +7,20 @@ import client.ui.admin.dialogs.EditUserDialog;
 import model.User;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class UserManagementPanel extends JPanel implements UsersTable.UserSelectionListener  {
+public class UserManagementPanel extends JPanel implements UsersTable.UserSelectionListener {
     
     private UserController userController;
     private UsersTable usersTable;
-    private DefaultTableModel tableModel;
+    private List<User> currentUsers;
+    
     private JButton addBtn, editBtn, deleteBtn, refreshBtn;
     private JTextField searchField;
+    private JComboBox<String> statusFilterComboBox;
     
     public UserManagementPanel(UserController userController) {
         this.userController = userController;
@@ -26,118 +29,116 @@ public class UserManagementPanel extends JPanel implements UsersTable.UserSelect
     }
     
     private void initUI() {
-        setLayout(new BorderLayout(5, 10));
+        setLayout(new BorderLayout(10, 10));
         
-        // Top buttons
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        addBtn = new JButton("Add");
+        JPanel topContainer = new JPanel();
+        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
+        topContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Row 1: Actions
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        addBtn = new JButton("Add User");
         editBtn = new JButton("Edit");
-        deleteBtn = new JButton("Delete");
+        deleteBtn = new JButton("Deactivate");
         refreshBtn = new JButton("Refresh");
-        searchField = new JTextField(15);
-        JButton searchBtn = new JButton("Search");
         
         editBtn.setEnabled(false);
         deleteBtn.setEnabled(false);
         deleteBtn.setForeground(Color.RED);
         
-        topPanel.add(addBtn);
-        topPanel.add(editBtn);
-        topPanel.add(deleteBtn);
-        topPanel.add(refreshBtn);
-        topPanel.add(Box.createHorizontalStrut(20));
-        topPanel.add(new JLabel("Search:"));
-        topPanel.add(searchField);
-        topPanel.add(searchBtn);
+        actionPanel.add(addBtn); actionPanel.add(editBtn); 
+        actionPanel.add(deleteBtn); actionPanel.add(refreshBtn);
+
+        // Row 2: Filters
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        filterPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Filters"));
         
-        add(topPanel, BorderLayout.NORTH);
+        filterPanel.add(new JLabel("Status:"));
+        statusFilterComboBox = new JComboBox<>(new String[]{"All", "Active", "Inactive"});
+        statusFilterComboBox.addActionListener(e -> applyFilters());
+        filterPanel.add(statusFilterComboBox);
+
+        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(new JLabel("Search:"));
+        searchField = new JTextField(20);
+        filterPanel.add(searchField);
+        JButton searchBtn = new JButton("Search");
+        filterPanel.add(searchBtn);
+
+        topContainer.add(actionPanel);
+        topContainer.add(filterPanel);
+        add(topContainer, BorderLayout.NORTH);
         
-        // Table
         usersTable = new UsersTable();
         usersTable.setSelectionListener(this); 
         add(usersTable, BorderLayout.CENTER);
         
+        // Listeners
         addBtn.addActionListener(e -> addUser());
         editBtn.addActionListener(e -> editUser());
         deleteBtn.addActionListener(e -> deleteUser());
         refreshBtn.addActionListener(e -> loadUsers());
-        searchBtn.addActionListener(e -> search());
-        searchField.addActionListener(e -> search());
+        searchBtn.addActionListener(e -> performSearch());
+        searchField.addActionListener(e -> performSearch());
     }
-    
-    @Override
-    public void onUserSelected(User user) {
-        editBtn.setEnabled(true);
-        deleteBtn.setEnabled(user.isActive());
+
+    private void applyFilters() {
+        if (currentUsers == null) return;
+        String status = (String) statusFilterComboBox.getSelectedItem();
+        
+        List<User> filtered = currentUsers.stream()
+            .filter(u -> {
+                if ("Active".equals(status)) return u.isActive();
+                if ("Inactive".equals(status)) return !u.isActive();
+                return true;
+            })
+            .collect(Collectors.toList());
+        usersTable.setUsers(filtered);
     }
-    
-    @Override
-    public void onUserDeselected() {
-        editBtn.setEnabled(false);
-        deleteBtn.setEnabled(false);
+
+    private void loadUsers() {
+        new Thread(() -> {
+            List<User> users = userController.getAllUsers();
+            SwingUtilities.invokeLater(() -> {
+                this.currentUsers = users;
+                applyFilters();
+            });
+        }).start();
     }
-    
-    @Override
-    public void onUserDoubleClicked(User user) {
-        // Double click = edit user
-        editUser();
+
+    private void performSearch() {
+        String keyword = searchField.getText().trim();
+        new Thread(() -> {
+            List<User> results = keyword.isEmpty() ? userController.getAllUsers() : userController.searchUsers(keyword);
+            SwingUtilities.invokeLater(() -> {
+                this.currentUsers = results;
+                applyFilters();
+            });
+        }).start();
     }
-    
+
+    @Override public void onUserSelected(User u) { editBtn.setEnabled(true); deleteBtn.setEnabled(u.isActive()); }
+    @Override public void onUserDeselected() { editBtn.setEnabled(false); deleteBtn.setEnabled(false); }
+    @Override public void onUserDoubleClicked(User u) { editUser(); }
+
     private void addUser() {
         AddUserDialog dialog = new AddUserDialog((JFrame) getTopLevelAncestor());
         dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            if (userController.createUser(dialog.getUser())) {
-//                JOptionPane.showMessageDialog(this, "User created!");
-                loadUsers();
-            }
-        }
+        if (dialog.isConfirmed() && userController.createUser(dialog.getUser())) loadUsers();
     }
-    
+
     private void editUser() {
-    	 User selectedUser = usersTable.getSelectedUser();
-    	 if (selectedUser == null) return;
-        
-        EditUserDialog dialog = new EditUserDialog((JFrame) getTopLevelAncestor(), selectedUser);
+        User selected = usersTable.getSelectedUser();
+        if (selected == null) return;
+        EditUserDialog dialog = new EditUserDialog((JFrame) getTopLevelAncestor(), selected);
         dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            if (userController.updateUser(dialog.getUser())) {
-//                JOptionPane.showMessageDialog(this, "User updated!");
-                loadUsers();
-            }
-        }
+        if (dialog.isConfirmed() && userController.updateUser(dialog.getUser())) loadUsers();
     }
-    
+
     private void deleteUser() {
-    	User selectedUser = usersTable.getSelectedUser();
-    	if (selectedUser == null) return;
-        
-        
-        int choice = JOptionPane.showConfirmDialog(this,
-            "Delete user: " + selectedUser.getUsername() + "?",
-            "Confirm", JOptionPane.YES_NO_OPTION);
-        
-        if (choice == JOptionPane.YES_OPTION) {
-            if (userController.deleteUser(selectedUser.getUserId(), selectedUser.getUsername())) {
-//                JOptionPane.showMessageDialog(this, "User deleted!");
-                loadUsers();
-            }
-        }
+        User selected = usersTable.getSelectedUser();
+        if (selected == null) return;
+        int choice = JOptionPane.showConfirmDialog(this, "Deactivate user: " + selected.getUsername() + "?", "Confirm", JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION && userController.deleteUser(selected.getUserId(), selected.getUsername())) loadUsers();
     }
-    
-    private void search() {
-        String keyword = searchField.getText().trim();
-        List<User> users = keyword.isEmpty() ? 
-            userController.getAllUsers() : 
-            userController.searchUsers(keyword);
-        usersTable.setUsers(users);
-    }
-    
-    private void loadUsers() {
-    	List<User> users = userController.getAllUsers();
-        usersTable.setUsers(users);
-    }
-    
 }

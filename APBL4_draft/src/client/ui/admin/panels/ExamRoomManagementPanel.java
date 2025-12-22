@@ -14,296 +14,165 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
-/**
- * ExamRoom Management Panel - UI for managing exam rooms
- * 
- * @author linhnguyen10c1
- * @since 2025-10-15 08:36:16 UTC
- */
 public class ExamRoomManagementPanel extends JPanel implements ExamRoomController.ExamRoomListener {
     
     private AdminDashboardCallbacks callbacks;
     private ExamRoomController examRoomController;
     
-    // UI Components
     private ExamRoomsTable examRoomsTable;
     private JTextField searchField;
-    private JButton createRoomButton;
-    private JButton editRoomButton;
-    private JButton deleteRoomButton;
-    private JButton manageStudentsButton;
-    private JButton refreshButton;
+    private JComboBox<String> statusFilterComboBox;
+    private JButton createRoomButton, editRoomButton, deleteRoomButton, manageStudentsButton, refreshButton;
     
-    // Data
-    private List<ExamRoom> examRooms;
-    private List<Subject> subjects;
-    private List<User> students;
+    private List<ExamRoom> allExamRooms;
+    private List<Subject> subjects = new ArrayList<>();
     
     public ExamRoomManagementPanel(AdminDashboardCallbacks callbacks, ExamRoomController examRoomController) {
         this.callbacks = callbacks;
         this.examRoomController = examRoomController;
-        this.examRooms = new ArrayList<>();
-        this.subjects = new ArrayList<>();
-        this.students = new ArrayList<>();
-        
-        // Set listener
         examRoomController.setExamRoomListener(this);
         
         initializeUI();
-        setupEventHandlers();
         loadInitialData();
     }
     
     private void initializeUI() {
-    	setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout(10, 10));
 
-    	// Panel trên (Header + Button)
-    	JPanel topPanel = new JPanel();
-    	topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+        JPanel topContainer = new JPanel();
+        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
+        topContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-    	topPanel.add(createHeaderPanel());
-    	topPanel.add(Box.createVerticalStrut(10)); // khoảng cách
-//    	topPanel.add(createButtonPanel());
-
-    	// Table
-    	examRoomsTable = new ExamRoomsTable();
-    	add(new JScrollPane(examRoomsTable), BorderLayout.CENTER);
-
-    	// Add vào frame/panel
-    	add(topPanel, BorderLayout.NORTH);
-        
-    }
-    
-    private JPanel createHeaderPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        searchPanel.add(new JLabel("Search:"));
-        
-        searchField = new JTextField(20);
-        searchPanel.add(searchField);
-        
-        JButton searchButton = new JButton("Search");
-        searchButton.addActionListener(e -> performSearch());
-        searchPanel.add(searchButton);
-        
-        panel.add(searchPanel, BorderLayout.EAST);
-        panel.add(createButtonPanel());
-        
-        return panel;
-    }
-    
-    private JPanel createButtonPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
-        
+        // Row 1: Actions
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         createRoomButton = new JButton("Create Room");
-        createRoomButton.setIcon(new ImageIcon("resources/icons/add.png"));
-        panel.add(createRoomButton);
-        
         editRoomButton = new JButton("Edit Room");
-        editRoomButton.setIcon(new ImageIcon("resources/icons/edit.png"));
-        editRoomButton.setEnabled(false);
-        panel.add(editRoomButton);
-        
         deleteRoomButton = new JButton("Delete Room");
-        deleteRoomButton.setIcon(new ImageIcon("resources/icons/delete.png"));
-        deleteRoomButton.setEnabled(false);
-        panel.add(deleteRoomButton);
-        
         manageStudentsButton = new JButton("Manage Students");
-        manageStudentsButton.setIcon(new ImageIcon("resources/icons/users.png"));
-        manageStudentsButton.setEnabled(false);
-        panel.add(manageStudentsButton);
-        
-        // Separator
-        panel.add(new JSeparator(SwingConstants.VERTICAL));
-        
         refreshButton = new JButton("Refresh");
-        refreshButton.setIcon(new ImageIcon("resources/icons/refresh.png"));
-        panel.add(refreshButton);
         
-        return panel;
-    }
-    
-    private void setupEventHandlers() {
-        // Table selection listener
-        examRoomsTable.setSelectionListener(new ExamRoomsTable.ExamRoomSelectionListener() {
-            @Override
-            public void onExamRoomSelected(ExamRoom examRoom) {
-                boolean hasSelection = examRoom != null;
-                editRoomButton.setEnabled(hasSelection);
-                deleteRoomButton.setEnabled(hasSelection);
-                manageStudentsButton.setEnabled(hasSelection);
-            }
-            
-            @Override
-            public void onExamRoomDeselected() {
-                editRoomButton.setEnabled(false);
-                deleteRoomButton.setEnabled(false);
-                manageStudentsButton.setEnabled(false);
-            }
-            
-            @Override
-            public void onExamRoomDoubleClicked(ExamRoom examRoom) {
-                showEditRoomDialog();
-            }
-        });
+        editRoomButton.setEnabled(false);
+        deleteRoomButton.setEnabled(false);
+        manageStudentsButton.setEnabled(false);
         
-        // Search functionality
+        actionPanel.add(createRoomButton); actionPanel.add(editRoomButton); 
+        actionPanel.add(deleteRoomButton); actionPanel.add(manageStudentsButton);
+        actionPanel.add(new JSeparator(JSeparator.VERTICAL));
+        actionPanel.add(refreshButton);
+
+        // Row 2: Filters & Search
+        JPanel filterPanel = new JPanel(new BorderLayout());
+        JPanel leftFilter = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        leftFilter.add(new JLabel("Status: "));
+        statusFilterComboBox = new JComboBox<>(new String[]{"All", "Active", "Inactive"});
+        statusFilterComboBox.addActionListener(e -> applyLocalFilter());
+        leftFilter.add(statusFilterComboBox);
+
+        JPanel rightSearch = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        rightSearch.add(new JLabel("Search: "));
+        searchField = new JTextField(20);
+        rightSearch.add(searchField);
+        JButton searchBtn = new JButton("Search");
+        rightSearch.add(searchBtn);
+
+        filterPanel.add(leftFilter, BorderLayout.WEST);
+        filterPanel.add(rightSearch, BorderLayout.EAST);
+
+        topContainer.add(actionPanel);
+        topContainer.add(filterPanel);
+        add(topContainer, BorderLayout.NORTH);
+
+        examRoomsTable = new ExamRoomsTable();
+        add(new JScrollPane(examRoomsTable), BorderLayout.CENTER);
+        
+        // Listeners
+        searchBtn.addActionListener(e -> performSearch());
         searchField.addActionListener(e -> performSearch());
-        
-        // Button listeners
         createRoomButton.addActionListener(e -> showCreateRoomDialog());
         editRoomButton.addActionListener(e -> showEditRoomDialog());
         deleteRoomButton.addActionListener(e -> deleteSelectedRoom());
         manageStudentsButton.addActionListener(e -> showManageStudentsDialog());
         refreshButton.addActionListener(e -> loadInitialData());
-    }
-    
-    private void loadInitialData() {
-        SwingUtilities.invokeLater(() -> {
-            updateStatus("Loading exam rooms...");
-            examRoomController.getAllExamRooms();
-            examRoomController.getAllSubjects();
-            examRoomController.getAllStudents();
-        });
-    }
-    
-    private void performSearch() {
-        String searchTerm = searchField.getText().trim();
-        updateStatus("Searching...");
-        
-        if (searchTerm.isEmpty()) {
-            examRoomController.getAllExamRooms();
-        } else {
-            examRoomController.searchExamRooms(searchTerm);
-        }
-    }
-    
-    private void showCreateRoomDialog() {
-        AddExamRoomDialog dialog = new AddExamRoomDialog(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
-            subjects
-        );
-        
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            ExamRoom newRoom = dialog.getExamRoom();
-            examRoomController.createExamRoom(newRoom);
-        }
-    }
-    
-    private void showEditRoomDialog() {
-        ExamRoom selectedRoom = examRoomsTable.getSelectedExamRoom();
-        if (selectedRoom == null) return;
-        
-        EditExamRoomDialog dialog = new EditExamRoomDialog(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
-            selectedRoom,
-            subjects
-        );
-        
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            ExamRoom updatedRoom = dialog.getExamRoom();
-            examRoomController.updateExamRoom(updatedRoom);
-        }
-    }
-    
-    private void deleteSelectedRoom() {
-        ExamRoom selectedRoom = examRoomsTable.getSelectedExamRoom();
-        if (selectedRoom == null) return;
-        
-        examRoomController.deleteExamRoom(selectedRoom.getRoomId(), selectedRoom.getRoomName());
-    }
-    
-    private void showManageStudentsDialog() {
-        ExamRoom selectedRoom = examRoomsTable.getSelectedExamRoom();
-        if (selectedRoom == null) return;
-        
-        List<User> students = examRoomController.getAllStudents();
-        ManageStudentsDialog dialog = new ManageStudentsDialog(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
-            selectedRoom,
-            students,
-            examRoomController
-        );
-        
-        dialog.setVisible(true);
-    }
-    
-    private void updateStatus(String message) {
-        if (callbacks != null) {
-            callbacks.updateStatus(message);
-        }
-    }
-    
-    // ExamRoomController.ExamRoomListener implementation
-    @Override
-    public void onExamRoomsLoaded(List<ExamRoom> examRooms) {
-        this.examRooms = examRooms;
-        SwingUtilities.invokeLater(() -> {
-            examRoomsTable.setExamRooms(examRooms);
-            updateStatus("Loaded " + examRooms.size() + " exam rooms");
-        });
-    }
-    
-    @Override
-    public void onExamRoomCreated(ExamRoom examRoom) {
-        examRooms.add(examRoom);
-        SwingUtilities.invokeLater(() -> {
-            examRoomsTable.setExamRooms(examRooms);
-            updateStatus("Exam room created: " + examRoom.getRoomName());
-        });
-    }
-    
-    @Override
-    public void onExamRoomUpdated(ExamRoom examRoom) {
-        // Find and update the room in the list
-        for (int i = 0; i < examRooms.size(); i++) {
-            if (examRooms.get(i).getRoomId() == examRoom.getRoomId()) {
-                examRooms.set(i, examRoom);
-                break;
+
+        examRoomsTable.setSelectionListener(new ExamRoomsTable.ExamRoomSelectionListener() {
+            @Override public void onExamRoomSelected(ExamRoom r) {
+                editRoomButton.setEnabled(true); deleteRoomButton.setEnabled(true); manageStudentsButton.setEnabled(true);
             }
-        }
-        SwingUtilities.invokeLater(() -> {
-            examRoomsTable.setExamRooms(examRooms);
-            updateStatus("Exam room updated: " + examRoom.getRoomName());
+            @Override public void onExamRoomDeselected() {
+                editRoomButton.setEnabled(false); deleteRoomButton.setEnabled(false); manageStudentsButton.setEnabled(false);
+            }
+            @Override public void onExamRoomDoubleClicked(ExamRoom r) { showEditRoomDialog(); }
         });
     }
-    
-    @Override
-    public void onExamRoomDeleted(int roomId) {
-        examRooms.removeIf(room -> room.getRoomId() == roomId);
-        SwingUtilities.invokeLater(() -> {
-            examRoomsTable.setExamRooms(examRooms);
-            updateStatus("Exam room deleted");
-        });
+
+    private void applyLocalFilter() {
+        if (allExamRooms == null) return;
+        String status = (String) statusFilterComboBox.getSelectedItem();
+        List<ExamRoom> filtered = allExamRooms.stream()
+            .filter(r -> {
+                if ("Active".equals(status)) return r.isActive();
+                if ("Inactive".equals(status)) return !r.isActive();
+                return true;
+            })
+            .collect(Collectors.toList());
+        examRoomsTable.setExamRooms(filtered);
     }
-    
-    @Override
-    public void onSubjectsLoaded(List<Subject> subjects) {
-        this.subjects = subjects;
-    }
-    
-    @Override
-    public void onStudentsLoaded(List<User> students) {
-        this.students = students;
-    }
-    
-    @Override
-    public void onStudentsUpdated() {
-        // Reload exam rooms to get updated student lists
+
+    private void loadInitialData() {
+        updateStatus("Loading data...");
         examRoomController.getAllExamRooms();
+        examRoomController.getAllSubjects();
+        examRoomController.getAllStudents();
     }
-    
-    @Override
-    public void onError(String message) {
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-            updateStatus("Error: " + message);
-        });
+
+    private void performSearch() {
+        String term = searchField.getText().trim();
+        if (term.isEmpty()) examRoomController.getAllExamRooms();
+        else examRoomController.searchExamRooms(term);
     }
+
+    @Override public void onExamRoomsLoaded(List<ExamRoom> rooms) {
+        this.allExamRooms = rooms;
+        SwingUtilities.invokeLater(this::applyLocalFilter);
+        updateStatus("Loaded " + rooms.size() + " rooms");
+    }
+
+    @Override public void onSubjectsLoaded(List<Subject> subjects) { this.subjects = subjects; }
+    @Override public void onStudentsLoaded(List<User> students) { }
+    @Override public void onStudentsUpdated() { examRoomController.getAllExamRooms(); }
+    @Override public void onExamRoomCreated(ExamRoom r) { loadInitialData(); }
+    @Override public void onExamRoomUpdated(ExamRoom r) { loadInitialData(); }
+    @Override public void onExamRoomDeleted(int id) { loadInitialData(); }
+    @Override public void onError(String msg) { JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE); }
+
+    private void showCreateRoomDialog() {
+        AddExamRoomDialog d = new AddExamRoomDialog((JFrame) SwingUtilities.getWindowAncestor(this), subjects);
+        d.setVisible(true);
+        if (d.isConfirmed()) examRoomController.createExamRoom(d.getExamRoom());
+    }
+
+    private void showEditRoomDialog() {
+        ExamRoom s = examRoomsTable.getSelectedExamRoom();
+        if (s == null) return;
+        EditExamRoomDialog d = new EditExamRoomDialog((JFrame) SwingUtilities.getWindowAncestor(this), s, subjects);
+        d.setVisible(true);
+        if (d.isConfirmed()) examRoomController.updateExamRoom(d.getExamRoom());
+    }
+
+    private void deleteSelectedRoom() {
+        ExamRoom s = examRoomsTable.getSelectedExamRoom();
+        if (s != null) examRoomController.deleteExamRoom(s.getRoomId(), s.getRoomName());
+    }
+
+    private void showManageStudentsDialog() {
+        ExamRoom s = examRoomsTable.getSelectedExamRoom();
+        if (s != null) {
+            List<User> stds = examRoomController.getAllStudents();
+            new ManageStudentsDialog((JFrame) SwingUtilities.getWindowAncestor(this), s, stds, examRoomController).setVisible(true);
+        }
+    }
+
+    private void updateStatus(String msg) { if (callbacks != null) callbacks.updateStatus(msg); }
 }
