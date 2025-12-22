@@ -63,9 +63,6 @@ public class ExamRoom {
     public Timestamp getEndTime() { return endTime; }
     public void setEndTime(Timestamp endTime) { this.endTime = endTime; }
     
-    // ... rest of getters/setters ...
-    
-    // ✅ THÊM: Helper methods để làm việc với UI
     public String getStartTimeAsString() {
         if (startTime == null) return null;
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -107,7 +104,6 @@ public class ExamRoom {
         }
     }
     
-    // ✅ THÊM: Business logic methods cho thời gian
     public boolean isExamActive() {
         if (startTime == null || endTime == null) return false;
         Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -168,7 +164,6 @@ public class ExamRoom {
                 ", isActive=" + isActive +
                 '}';
     }
-    // Các field này được server gắn vào khi trả về cho student cụ thể
     private String studentSubmissionStatus;  // "NOT_SUBMITTED", "SUBMITTED", "AUTO_SUBMITTED"
     private Double studentScore;             // Điểm của student (null nếu chưa nộp)
     private Double maxScoreForStudent;       // Điểm tối đa
