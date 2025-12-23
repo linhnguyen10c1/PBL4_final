@@ -43,37 +43,6 @@ public class NetworkManager{
         void onConnectionLost();
     }
     
-	
-	// connect to server 
-//	public boolean connect() {
-//		try {
-//			System.out.println("Connecting to server: " + serverHost + ":" + serverPort);
-//			
-//			// tạo socket nhưng có time out? 
-//			socket = new Socket();
-//			socket.connect(new java.net.InetSocketAddress(serverHost, serverPort), CONNECTION_TIMEOUT);
-//			socket.setSoTimeout(READ_TIMEOUT);
-//			
-//			// khởi tạo kiểu luồng nhận, gửi ấy 
-//			// reader là gì? 
-//			// writer là gì?
-//			reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//			writer = new PrintWriter(socket.getOutputStream(), true);
-//			
-//			// server phản hồi lại client
-//			String welcomeMessage = reader.readLine();
-//			if(welcomeMessage != null && welcomeMessage.startsWith(Protocol.SUCCESS)) {
-//				isConnected = true;
-//				System.out.println("Connected to server successfully");
-//				
-//				// hàm này có ý nghĩa gì 
-//				startHeartbeat();
-//				if(connectionListener != null) {
-//					
-//				}
-//			}
-//		}
-//	}
     public boolean connect() {
         try {
             System.out.println("🔌 Connecting to server: " + serverHost + ":" + serverPort);
