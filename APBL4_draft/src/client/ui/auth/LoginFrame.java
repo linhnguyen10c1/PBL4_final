@@ -27,7 +27,6 @@ public class LoginFrame extends JFrame implements
     private LoginPanel loginPanel;
     private StatusPanel statusPanel;
     
-    // ✅ THÊM: Lưu reference dashboard hiện tại
     private JFrame currentDashboard;
     
     public LoginFrame(NetworkManager networkManager) {
@@ -76,9 +75,6 @@ public class LoginFrame extends JFrame implements
         setLocationRelativeTo(null);
     }
     
-    /**
-     * ✅ PHƯƠNG THỨC MỚI: Đặt cửa sổ chính giữa màn hình một cách chính xác
-     */
     private void centerOnScreen() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         Dimension frameSize = getSize();
@@ -103,15 +99,6 @@ public class LoginFrame extends JFrame implements
         });
     }
     
-    // ========================================
-    // ✅ PHƯƠNG THỨC MỚI: Reset LoginFrame về trạng thái ban đầu
-    // ========================================
-    /**
-     * Reset LoginFrame về trạng thái ban đầu khi logout
-     * - Clear password field
-     * - Reset status
-     * - Focus vào username
-     */
     public void resetForLogout() {
         SwingUtilities.invokeLater(() -> {
             System.out.println("🔄 Resetting LoginFrame for logout...");
@@ -142,9 +129,6 @@ public class LoginFrame extends JFrame implements
         });
     }
     
-    /**
-     * ✅ PHƯƠNG THỨC MỚI: Hiển thị lại LoginFrame sau khi logout
-     */
     public void showAfterLogout() {
         SwingUtilities.invokeLater(() -> {
             System.out.println("🔄 Showing LoginFrame after logout...");
@@ -321,7 +305,6 @@ public class LoginFrame extends JFrame implements
     
     @Override
     public void onLogoutSuccess() {
-        // ✅ PHƯƠNG THỨC MỚI: Được gọi từ dashboard khi logout
         SwingUtilities.invokeLater(() -> {
             System.out.println("🔄 onLogoutSuccess called in LoginFrame");
             
@@ -369,7 +352,6 @@ public class LoginFrame extends JFrame implements
         });
     }
     
-    // ✅ GETTER: Cho phép dashboard access LoginFrame
     public LoginController getLoginController() {
         return loginController;
     }
