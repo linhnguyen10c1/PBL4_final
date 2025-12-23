@@ -9,12 +9,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Base Controller - Common functionality for all controllers
- * 
- * @author linhnguyen10c1
- * @since 2025-09-14 13:39:25 UTC
- */
 public abstract class BaseController {
     
     protected NetworkManager networkManager;
@@ -25,29 +19,20 @@ public abstract class BaseController {
         this.networkManager = networkManager;
     }
     
-    /**
-     * Send request and get parsed response
-     * ✅ FIX: Cải thiện cho student với timeout và retry
-     */
     protected ResponseData sendRequest(String action, String data) {
         try {
-            // ✅ FIX: Kiểm tra nếu là student request quan trọng
             boolean isStudentImportantRequest = isStudentImportantRequest(action);
             
             if (isStudentImportantRequest && currentUser != null && currentUser.isStudent()) {
-                // ✅ FIX: Tạm dừng heartbeat cho student requests quan trọng
                 if (networkManager instanceof NetworkManager) {
                     try {
                         networkManager.getClass().getMethod("pauseHeartbeat").invoke(networkManager);
                     } catch (Exception e) {
-                        // Không có method pauseHeartbeat, bỏ qua
                     }
                 }
                 
-                // ✅ FIX: Retry mechanism cho student
                 return sendRequestWithRetry(action, data, 3);
             } else {
-                // ✅ Giữ nguyên logic cũ cho admin
                 String response = networkManager.sendRequest(action, data);
                 return NetworkManager.parseResponse(response);
             }
@@ -166,7 +151,6 @@ public abstract class BaseController {
                              "Please check your network connection and login again to continue your exam.";
                 }
             } else {
-                // ✅ Giữ nguyên message cho admin
                 message = "Lost connection to server. Please check your network connection and try again.";
             }
             
@@ -191,7 +175,7 @@ public abstract class BaseController {
     }
     
     /**
-     * ✅ FIX: Handle authentication error riêng cho student
+     * Handle authentication error riêng cho student
      */
     private void handleAuthenticationError() {
         if (currentUser != null && currentUser.isStudent()) {
@@ -262,7 +246,6 @@ public abstract class BaseController {
     
     /**
      * Check if user is logged in
-     * ✅ FIX: Cải thiện validation
      */
     public boolean isLoggedIn() {
         boolean loggedIn = currentUser != null && 
@@ -300,7 +283,6 @@ public abstract class BaseController {
     
     /**
      * Validate session
-     * ✅ FIX: Cải thiện session validation
      */
     protected boolean validateSession() {
         if (!isLoggedIn()) {
@@ -317,7 +299,6 @@ public abstract class BaseController {
     
     /**
      * Log action for debugging
-     * ✅ FIX: Thêm timestamp và user info
      */
     protected void logAction(String action, String details) {
         String timestamp = java.time.LocalDateTime.now().toString();
@@ -327,8 +308,6 @@ public abstract class BaseController {
         System.out.println("[" + timestamp + "][" + getClass().getSimpleName() + "]" + userInfo + 
             " " + action + (details != null ? ": " + details : ""));
     }
-    
-    // ✅ FIX: Thêm helper methods cho convenience
     
     /**
      * Check if current user is admin
@@ -352,7 +331,7 @@ public abstract class BaseController {
     }
     
     /**
-     * ✅ FIX: Validate admin permissions (để các controller hiện tại dùng)
+     * Validate admin permissions (để các controller hiện tại dùng)
      */
     public boolean hasAdminPermissions() {
         if (!isLoggedIn()) {
@@ -370,7 +349,7 @@ public abstract class BaseController {
     }
     
     /**
-     * ✅ FIX: Validate student permissions
+     * Validate student permissions
      */
     public boolean hasStudentPermissions() {
         if (!isLoggedIn()) {
