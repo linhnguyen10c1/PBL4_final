@@ -63,75 +63,77 @@ public class ExamRoomController extends BaseController {
      * Create new exam room
      */
     public boolean createExamRoom(ExamRoom examRoom) {
-        try {
-            logAction("createExamRoom", "Creating room: " + examRoom.getRoomName());
-            
-            if (!validateSession()) {
-                return false;
-            }
-            
-            ResponseData response = sendJsonRequest(Protocol.CREATE_ROOM, examRoom);
-            
-            if (response.isSuccess()) {
-                logAction("createExamRoom", "Room created successfully");
-                showSuccessMessage("Success", "Exam room created successfully!");
-                
-                if (listener != null) {
-                    // Parse created room from response data
-                    String[] parts = response.getData().split("\\|", 2);
-                    if (parts.length >= 2) {
-                        ExamRoom createdRoom = JsonUtil.fromJson(parts[1], ExamRoom.class);
-                        listener.onExamRoomCreated(createdRoom);
-                    }
-                }
-                return true;
-            } else {
-                handleServerError(response.getMessage());
-                return false;
-            }
-            
-        } catch (Exception e) {
-            handleNetworkError(e);
-            return false;
-        }
-    }
+	    try {
+	        logAction("createExamRoom", "Creating room: " + examRoom.getRoomName());
+	        if (!validateSession()) return false;
+	        
+	        ResponseData response = sendJsonRequest(Protocol.CREATE_ROOM, examRoom);
+	        
+	        if (response.isSuccess()) {
+	            logAction("createExamRoom", "Room created successfully");
+	            showSuccessMessage("Success", "Exam room created successfully!");
+	            
+	            if (listener != null) {
+	                listener.onExamRoomsLoaded(getAllExamRooms()); 
+	                
+	                try {
+	                    String[] parts = response.getData().split("\\|", 2);
+	                    if (parts.length >= 2) {
+	                        ExamRoom createdRoom = JsonUtil.fromJson(parts[1], ExamRoom.class);
+	                        listener.onExamRoomCreated(createdRoom);
+	                    }
+	                } catch (Exception e) {
+	                    System.err.println("⚠️ Could not parse created room object, but action was successful.");
+	                }
+	            }
+	            return true;
+	        } else {
+	            handleServerError(response.getMessage());
+	            return false;
+	        }
+	    } catch (Exception e) {
+	        handleNetworkError(e);
+	        return false;
+	    }
+	}
     
     /**
      * Update existing exam room
      */
     public boolean updateExamRoom(ExamRoom examRoom) {
-        try {
-            logAction("updateExamRoom", "Updating room ID: " + examRoom.getRoomId());
-            
-            if (!validateSession()) {
-                return false;
-            }
-            
-            ResponseData response = sendJsonRequest(Protocol.UPDATE_ROOM, examRoom);
-            
-            if (response.isSuccess()) {
-                logAction("updateExamRoom", "Room updated successfully");
-                showSuccessMessage("Success", "Exam room updated successfully!");
-                
-                if (listener != null) {
-                    // Parse updated room from response data
-                    String[] parts = response.getData().split("\\|", 2);
-                    if (parts.length >= 2) {
-                        ExamRoom updatedRoom = JsonUtil.fromJson(parts[1], ExamRoom.class);
-                        listener.onExamRoomUpdated(updatedRoom);
-                    }
-                }
-                return true;
-            } else {
-                handleServerError(response.getMessage());
-                return false;
-            }
-            
-        } catch (Exception e) {
-            handleNetworkError(e);
-            return false;
-        }
-    }
+	    try {
+	        logAction("updateExamRoom", "Updating room ID: " + examRoom.getRoomId());
+	        if (!validateSession()) return false;
+	        
+	        ResponseData response = sendJsonRequest(Protocol.UPDATE_ROOM, examRoom);
+	        
+	        if (response.isSuccess()) {
+	            logAction("updateExamRoom", "Room updated successfully");
+	            showSuccessMessage("Success", "Exam room updated successfully!");
+	            
+	            if (listener != null) {
+	                listener.onExamRoomsLoaded(getAllExamRooms());
+	                
+	                try {
+	                    String[] parts = response.getData().split("\\|", 2);
+	                    if (parts.length >= 2) {
+	                        ExamRoom updatedRoom = JsonUtil.fromJson(parts[1], ExamRoom.class);
+	                        listener.onExamRoomUpdated(updatedRoom);
+	                    }
+	                } catch (Exception e) {
+	                    System.err.println("⚠️ Could not parse updated room object.");
+	                }
+	            }
+	            return true;
+	        } else {
+	            handleServerError(response.getMessage());
+	            return false;
+	        }
+	    } catch (Exception e) {
+	        handleNetworkError(e);
+	        return false;
+	    }
+	}
     
     /**
      * Delete exam room

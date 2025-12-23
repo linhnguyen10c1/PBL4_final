@@ -150,20 +150,44 @@ public class ExamRoomManagementPanel extends JPanel implements ExamRoomControlle
     private void showCreateRoomDialog() {
         AddExamRoomDialog d = new AddExamRoomDialog((JFrame) SwingUtilities.getWindowAncestor(this), subjects);
         d.setVisible(true);
-        if (d.isConfirmed()) examRoomController.createExamRoom(d.getExamRoom());
+        
+        if (d.isConfirmed()) {
+            new Thread(() -> {
+                boolean success = examRoomController.createExamRoom(d.getExamRoom());
+                if (success) {
+                    SwingUtilities.invokeLater(this::loadInitialData);
+                }
+            }).start();
+        }
     }
 
     private void showEditRoomDialog() {
         ExamRoom s = examRoomsTable.getSelectedExamRoom();
         if (s == null) return;
+        
         EditExamRoomDialog d = new EditExamRoomDialog((JFrame) SwingUtilities.getWindowAncestor(this), s, subjects);
         d.setVisible(true);
-        if (d.isConfirmed()) examRoomController.updateExamRoom(d.getExamRoom());
+        
+        if (d.isConfirmed()) {
+            new Thread(() -> {
+                boolean success = examRoomController.updateExamRoom(d.getExamRoom());
+                if (success) {
+                    SwingUtilities.invokeLater(this::loadInitialData);
+                }
+            }).start();
+        }
     }
 
     private void deleteSelectedRoom() {
         ExamRoom s = examRoomsTable.getSelectedExamRoom();
-        if (s != null) examRoomController.deleteExamRoom(s.getRoomId(), s.getRoomName());
+        if (s == null) return;
+        
+        new Thread(() -> {
+            boolean success = examRoomController.deleteExamRoom(s.getRoomId(), s.getRoomName());
+            if (success) {
+                SwingUtilities.invokeLater(this::loadInitialData);
+            }
+        }).start();
     }
 
     private void showManageStudentsDialog() {
