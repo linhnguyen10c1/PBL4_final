@@ -275,7 +275,6 @@ public class LoginFrame extends JFrame implements
             
             System.out.println("✅ Login successful: " + user.getUsername() + " (Role: " + user.getRole() + ")");
             
-            // ✅ ẨN (không dispose) login frame
             setVisible(false);
             
             // Open appropriate dashboard based on user role
@@ -287,8 +286,6 @@ public class LoginFrame extends JFrame implements
                 currentDashboard.setVisible(true);
             }
             
-            // ✅ KHÔNG dispose() login frame nữa - giữ lại để reuse
-            // dispose(); // <-- REMOVED
         });
     }
     
