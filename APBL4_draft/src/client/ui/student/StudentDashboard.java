@@ -126,36 +126,35 @@ public class StudentDashboard extends JFrame implements StudentDashboardCallback
     }
     
     private void handleWindowClosing() {
-        if (currentExamSession != null && currentExamSession. isInProgress()) {
-            int choice = JOptionPane. showConfirmDialog(this,
-                "You have an active exam in progress. Are you sure you want to exit?\n" +
-                "Your exam will be automatically submitted.",
-                "Exam in Progress",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-                
-            if (choice == JOptionPane. YES_OPTION) {
-                // Auto-submit exam
-                onSubmitExamRequested(currentExamSession, true);
-                loginController.logout();
-                shutdownExecutor();
-                System.exit(0);
-            }
-        } else {
-            int choice = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to logout and return to login screen?",
-                "Exit Confirmation",
-                JOptionPane.YES_NO_OPTION);
-                
-            if (choice == JOptionPane. YES_OPTION) {
-            	System.out.println("🛑 StudentDashboard: Logging out...");
-            	loginController.logout();
-                shutdownExecutor();
-                System.exit(0);
-            }
+    if (currentExamSession != null && currentExamSession.isInProgress()) {
+        int choice = JOptionPane.showConfirmDialog(this,
+            "You have an active exam in progress. Are you sure you want to exit?\n" +
+            "Note: The exam timer will continue to run on the server until time expires.",
+            "Warning: Exam in Progress",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE);
+            
+        if (choice == JOptionPane.YES_OPTION) {
+            
+            System.out.println("🛑 Student closing application during exam. No auto-submit sent.");
+            
+            performLogout();
+            
+            System.exit(0);
+        }
+    } else {
+        int choice = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to logout and close the application?",
+            "Exit Confirmation",
+            JOptionPane.YES_NO_OPTION);
+            
+        if (choice == JOptionPane.YES_OPTION) {
+            System.out.println("🛑 StudentDashboard: Logging out and exiting...");
+            performLogout();
+            System.exit(0);
         }
     }
-    
+}
     private void performLogout() {
         System.out.println("🔄 StudentDashboard:  Performing logout...");
         
